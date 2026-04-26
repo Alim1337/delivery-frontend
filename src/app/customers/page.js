@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 import api from "@/lib/axios";
 import Navbar from "@/components/Navbar";
 
@@ -10,7 +11,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
-  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const isAdmin = typeof window !== "undefined" && localStorage.getItem("role") === "ADMIN";
 
   useEffect(() => {
@@ -23,20 +24,33 @@ export default function CustomersPage() {
     try {
       const res = await api.get("/api/customers");
       setCustomers(res.data);
-    } catch { router.push("/login"); }
-    finally { setLoading(false); }
+    } catch {
+      toast.error("Session expired, please login again");
+      router.push("/login");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    setError("");
+    setSubmitting(true);
     try {
       await api.post("/api/customers", form);
+      toast.success("Customer created successfully!");
       setForm({ name: "", email: "", phone: "", address: "" });
       setShowForm(false);
       fetchCustomers();
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to create customer");
+      const errors = err.response?.data?.errors;
+      if (errors && errors.length > 0) {
+        // show each validation error as a separate toast
+        errors.forEach(e => toast.error(e));
+      } else {
+        toast.error(err.response?.data?.error || "Failed to create customer");
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -44,9 +58,10 @@ export default function CustomersPage() {
     if (!confirm("Delete this customer?")) return;
     try {
       await api.delete(`/api/customers/${id}`);
+      toast.success("Customer deleted!");
       fetchCustomers();
     } catch (err) {
-      alert(err.response?.data?.error || "Failed to delete");
+      toast.error(err.response?.data?.error || "Failed to delete customer");
     }
   };
 
@@ -65,7 +80,6 @@ export default function CustomersPage() {
 
         {showForm && (
           <form onSubmit={handleCreate} className="bg-white p-6 rounded-xl shadow mb-6 grid grid-cols-2 gap-4">
-            {error && <p className="col-span-2 text-red-500 text-sm">{error}</p>}
             {["name", "email", "phone", "address"].map((field) => (
               <div key={field}>
                 <label className="block text-sm font-medium text-gray-700 mb-1 capitalize">{field}</label>
@@ -78,14 +92,19 @@ export default function CustomersPage() {
               </div>
             ))}
             <div className="col-span-2">
-              <button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg text-sm">
-                Create Customer
+              <button
+                type="submit"
+                disabled={submitting}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg text-sm disabled:opacity-50">
+                {submitting ? "Creating..." : "Create Customer"}
               </button>
             </div>
           </form>
         )}
 
-        {loading ? <p className="text-gray-500">Loading...</p> : (
+        {loading ? (
+          <p className="text-gray-500">Loading...</p>
+        ) : (
           <div className="bg-white rounded-xl shadow overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
