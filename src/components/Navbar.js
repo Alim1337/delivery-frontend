@@ -1,15 +1,20 @@
 "use client";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Truck, LogOut, Bell } from "lucide-react";
+import { Truck, LogOut } from "lucide-react";
 
 export default function Navbar({ links = [] }) {
   const router = useRouter();
   const pathname = usePathname();
-  const firstName = typeof window !== "undefined"
-    ? localStorage.getItem("firstName") : "";
-  const role = typeof window !== "undefined"
-    ? localStorage.getItem("role") : "";
+
+  const [firstName, setFirstName] = useState("");
+  const [role, setRole] = useState("");
+
+  useEffect(() => {
+    setFirstName(localStorage.getItem("firstName") || "");
+    setRole(localStorage.getItem("role") || "");
+  }, []);
 
   const roleColors = {
     CUSTOMER: "bg-blue-100 text-blue-700",
@@ -47,12 +52,16 @@ export default function Navbar({ links = [] }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`hidden sm:block px-2.5 py-1 rounded-full text-xs font-semibold ${roleColors[role] || "bg-gray-100 text-gray-600"}`}>
-            {role}
-          </span>
-          <span className="text-sm text-gray-600 font-medium hidden sm:block">
-            {firstName}
-          </span>
+          {role && (
+            <span className={`hidden sm:block px-2.5 py-1 rounded-full text-xs font-semibold ${roleColors[role] || "bg-gray-100 text-gray-600"}`}>
+              {role}
+            </span>
+          )}
+          {firstName && (
+            <span className="text-sm text-gray-600 font-medium hidden sm:block">
+              {firstName}
+            </span>
+          )}
           <button onClick={logout}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-500 transition px-3 py-2 rounded-lg hover:bg-red-50">
             <LogOut className="w-4 h-4" />
