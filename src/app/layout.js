@@ -5,8 +5,8 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Delivery System",
-  description: "Order & Delivery Management",
+  title: "DeliverFlow",
+  description: "Smart Delivery Management",
 };
 
 export default function RootLayout({ children }) {
@@ -17,9 +17,7 @@ export default function RootLayout({ children }) {
           position="top-right"
           toastOptions={{
             duration: 4000,
-            style: { background: "#1f2937", color: "#fff" },
-            error: { style: { background: "#dc2626", color: "#fff" } },
-            success: { style: { background: "#16a34a", color: "#fff" } },
+            style: { borderRadius: "10px", fontFamily: "inherit" },
           }}
         />
         {children}
