@@ -22,9 +22,9 @@ export default function DriverSetupPage() {
     if (!form.vehicleType) { toast.error("Please select a vehicle type"); return; }
     setLoading(true);
     try {
-      await api.post("/api/profile/driver", form);
+      await api.post("/api/profile/drivers", form);
       toast.success("Profile setup complete!");
-      router.push("/driver/dashboard");
+      router.push("/drivers/dashboard");
     } catch (err) {
       toast.error(err.response?.data?.error || "Setup failed");
     } finally {

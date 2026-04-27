@@ -8,8 +8,8 @@ import StatusBadge from "@/components/StatusBadge";
 import { MapPin, Package, Star, CheckCircle } from "lucide-react";
 
 const links = [
-  { href: "/driver/dashboard", label: "Available" },
-  { href: "/driver/my-deliveries", label: "My Deliveries" },
+  { href: "/drivers/dashboard", label: "Available" },
+  { href: "/drivers/my-deliveries", label: "My Deliveries" },
 ];
 
 const nextStatus = {
