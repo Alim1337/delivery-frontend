@@ -23,8 +23,8 @@ export default function LoginPage() {
       localStorage.setItem("firstName", firstName);
       toast.success(`Welcome back, ${firstName}!`);
       if (role === "BUSINESS") router.push("/business/dashboard");
-      else if (role === "DRIVER") router.push("/driver/dashboard");
-      else if (role === "CUSTOMER") router.push("/customer/dashboard");
+      else if (role === "DRIVER") router.push("/drivers/dashboard");
+      else if (role === "CUSTOMER") router.push("/customers/dashboard");
       else router.push("/dashboard");
     } catch {
       toast.error("Invalid email or password");
