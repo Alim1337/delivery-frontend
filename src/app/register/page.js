@@ -63,8 +63,8 @@ export default function RegisterPage() {
       localStorage.setItem("firstName", firstName);
       toast.success(`Welcome, ${firstName}!`);
       if (role === "BUSINESS") router.push("/business/setup");
-      else if (role === "DRIVER") router.push("/driver/setup");
-      else router.push("/customer/dashboard");
+      else if (role === "DRIVER") router.push("/drivers/setup");
+      else router.push("/customers/dashboard");
     } catch (err) {
       const errors = err.response?.data?.errors;
       if (errors?.length > 0) errors.forEach(e => toast.error(e));
