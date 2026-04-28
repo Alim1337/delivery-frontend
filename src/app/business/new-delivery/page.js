@@ -22,8 +22,10 @@ export default function NewDeliveryPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.get("/api/customers").then(res => setCustomers(res.data)).catch(() => {});
-  }, []);
+    api.get("/api/users/customers")
+      .then(res => setCustomers(res.data))
+      .catch(() => toast.error("Failed to load customers"));
+}, []);
 
   const filtered = customers.filter(c =>
     c.name?.toLowerCase().includes(search.toLowerCase()) ||

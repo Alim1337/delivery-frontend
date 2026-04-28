@@ -1,132 +1,106 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import api from "@/lib/axios";
 import toast from "react-hot-toast";
+import api from "@/lib/axios";
 import Navbar from "@/components/Navbar";
-import StatusBadge from "@/components/StatusBadge";
-import { Plus, Package, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Users, Truck, Package, Shield } from "lucide-react";
 
 const links = [
-  { href: "/business/dashboard", label: "Dashboard" },
-  { href: "/business/new-delivery", label: "New Delivery" },
+  { href: "/dashboard", label: "Overview" },
+  { href: "/customers", label: "Customers" },
+  { href: "/drivers", label: "Drivers" },
+  { href: "/orders", label: "Orders" },
 ];
 
-export default function BusinessDashboard() {
+export default function AdminDashboard() {
   const router = useRouter();
-  const [deliveries, setDeliveries] = useState([]);
+  const [stats, setStats] = useState({
+    customers: 0, drivers: 0, orders: 0, deliveries: 0
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
-    if (!token || role !== "BUSINESS") { router.push("/login"); return; }
-    fetchDeliveries();
+    if (!token) { router.push("/login"); return; }
+    if (role !== "ADMIN") {
+      if (role === "BUSINESS") router.push("/business/dashboard");
+      else if (role === "DRIVER") router.push("/driver/dashboard");
+      else if (role === "CUSTOMER") router.push("/customer/dashboard");
+      return;
+    }
+    fetchStats();
   }, []);
 
-  const fetchDeliveries = async () => {
+  const fetchStats = async () => {
     try {
-      const res = await api.get("/api/deliveries/my-business");
-      setDeliveries(res.data);
+      const [customers, drivers, orders] = await Promise.all([
+        api.get("/api/customers"),
+        api.get("/api/drivers"),
+        api.get("/api/orders?page=0&size=1"),
+      ]);
+      setStats({
+        customers: customers.data.length,
+        drivers: drivers.data.length,
+        orders: orders.data.totalElements,
+      });
     } catch {
-      toast.error("Failed to load deliveries");
+      toast.error("Failed to load stats");
     } finally {
       setLoading(false);
     }
   };
 
-  const stats = [
-    { label: "Total", value: deliveries.length, icon: Package, color: "blue" },
-    { label: "Active", value: deliveries.filter(d => !["DELIVERED","CANCELLED"].includes(d.status)).length, icon: Clock, color: "yellow" },
-    { label: "Delivered", value: deliveries.filter(d => d.status === "DELIVERED").length, icon: CheckCircle, color: "green" },
-    { label: "Cancelled", value: deliveries.filter(d => d.status === "CANCELLED").length, icon: XCircle, color: "red" },
+  const cards = [
+    { label: "Customers", value: stats.customers, icon: Users, color: "blue", href: "/customers" },
+    { label: "Drivers", value: stats.drivers, icon: Truck, color: "green", href: "/drivers" },
+    { label: "Orders", value: stats.orders, icon: Package, color: "purple", href: "/orders" },
   ];
 
   const colorMap = {
-    blue: "bg-blue-50 text-blue-600", yellow: "bg-yellow-50 text-yellow-600",
-    green: "bg-green-50 text-green-600", red: "bg-red-50 text-red-600",
+    blue: { bg: "bg-blue-50", text: "text-blue-600", btn: "bg-blue-600" },
+    green: { bg: "bg-green-50", text: "text-green-600", btn: "bg-green-600" },
+    purple: { bg: "bg-purple-50", text: "text-purple-600", btn: "bg-purple-600" },
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar links={links} />
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-8">
+      <div className="max-w-5xl mx-auto p-6">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+            <Shield className="w-5 h-5 text-red-600" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Business Dashboard</h1>
-            <p className="text-gray-500 text-sm mt-1">Manage your delivery requests</p>
+            <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
+            <p className="text-gray-500 text-sm">Full system access</p>
           </div>
-          <button onClick={() => router.push("/business/new-delivery")}
-            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition">
-            <Plus className="w-4 h-4" />
-            New Delivery
-          </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {stats.map((s) => {
-            const Icon = s.icon;
-            return (
-              <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${colorMap[s.color]}`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <p className="text-2xl font-bold text-gray-800">{s.value}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Deliveries table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-5 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-800">Recent Deliveries</h2>
+        {loading ? (
+          <p className="text-gray-400">Loading...</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {cards.map((card) => {
+              const Icon = card.icon;
+              const c = colorMap[card.color];
+              return (
+                <a href={card.href} key={card.label}
+                  className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition group">
+                  <div className={`w-12 h-12 ${c.bg} rounded-xl flex items-center justify-center mb-4`}>
+                    <Icon className={`w-6 h-6 ${c.text}`} />
+                  </div>
+                  <p className="text-3xl font-bold text-gray-800">{card.value}</p>
+                  <p className="text-gray-500 text-sm mt-1">{card.label}</p>
+                  <p className={`text-xs mt-3 ${c.text} font-medium group-hover:underline`}>
+                    Manage →
+                  </p>
+                </a>
+              );
+            })}
           </div>
-          {loading ? (
-            <div className="p-8 text-center text-gray-400">Loading...</div>
-          ) : deliveries.length === 0 ? (
-            <div className="p-12 text-center">
-              <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-              <p className="text-gray-400 font-medium">No deliveries yet</p>
-              <p className="text-gray-300 text-sm mt-1">Create your first delivery request</p>
-              <button onClick={() => router.push("/business/new-delivery")}
-                className="mt-4 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">
-                + New Delivery
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
-                  <tr>
-                    {["ID", "Customer", "Driver", "Items", "Price", "Status", "Date"].map(h => (
-                      <th key={h} className="px-5 py-3 text-left font-medium">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {deliveries.map((d) => (
-                    <tr key={d.id} className="hover:bg-gray-50 transition">
-                      <td className="px-5 py-4 text-gray-400 font-mono text-xs">#{d.id}</td>
-                      <td className="px-5 py-4 font-medium text-gray-800">{d.customerName}</td>
-                      <td className="px-5 py-4 text-gray-500">
-                        {d.driverName || <span className="text-gray-300">Unassigned</span>}
-                      </td>
-                      <td className="px-5 py-4 text-gray-500 max-w-32 truncate">{d.itemDescription}</td>
-                      <td className="px-5 py-4 font-medium text-gray-800">{d.price} DA</td>
-                      <td className="px-5 py-4"><StatusBadge status={d.status} /></td>
-                      <td className="px-5 py-4 text-gray-400 text-xs">
-                        {new Date(d.createdAt).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
