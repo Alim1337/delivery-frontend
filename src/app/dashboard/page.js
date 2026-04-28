@@ -1,88 +1,156 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import toast from "react-hot-toast";
 import api from "@/lib/axios";
+import toast from "react-hot-toast";
 import Navbar from "@/components/Navbar";
+import StatusBadge from "@/components/StatusBadge";
+import { Plus, Package, Clock, CheckCircle, XCircle } from "lucide-react";
 
-export default function DashboardPage() {
+const links = [
+  { href: "/business/dashboard", label: "Dashboard" },
+  { href: "/business/new-delivery", label: "New Delivery" },
+];
+
+export default function BusinessDashboard() {
   const router = useRouter();
-  const [stats, setStats] = useState({ customers: 0, drivers: 0, orders: 0 });
+  const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) { router.push("/login"); return; }
-
-    const fetchStats = async () => {
-      try {
-        const [customers, drivers, orders] = await Promise.all([
-          api.get("/api/customers"),
-          api.get("/api/drivers"),
-          api.get("/api/orders?page=0&size=1"),
-        ]);
-        setStats({
-          customers: customers.data.length,
-          drivers: drivers.data.length,
-          orders: orders.data.totalElements,
-        });
-      } catch {
-        toast.error("Failed to load dashboard data");
-        router.push("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
+    const role = localStorage.getItem("role");
+    if (!token || role !== "BUSINESS") { router.push("/login"); return; }
+    fetchDeliveries();
   }, []);
 
-  const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
+  const fetchDeliveries = async () => {
+    try {
+      const res = await api.get("/api/deliveries/my-business");
+      setDeliveries(res.data);
+    } catch {
+      toast.error("Failed to load deliveries");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const cards = [
-    { label: "Total Customers", value: stats.customers, color: "bg-blue-500", link: "/customers" },
-    { label: "Total Drivers", value: stats.drivers, color: "bg-green-500", link: "/drivers" },
-    { label: "Total Orders", value: stats.orders, color: "bg-purple-500", link: "/orders" },
+  const stats = [
+    { label: "Total", value: deliveries.length, icon: Package, color: "blue" },
+    { label: "Active", value: deliveries.filter(d => !["DELIVERED","CANCELLED"].includes(d.status)).length, icon: Clock, color: "yellow" },
+    { label: "Delivered", value: deliveries.filter(d => d.status === "DELIVERED").length, icon: CheckCircle, color: "green" },
+    { label: "Cancelled", value: deliveries.filter(d => d.status === "CANCELLED").length, icon: XCircle, color: "red" },
   ];
 
+  const colorMap = {
+    blue:   { bg: "bg-blue-50",   text: "text-blue-600" },
+    yellow: { bg: "bg-yellow-50", text: "text-yellow-600" },
+    green:  { bg: "bg-green-50",  text: "text-green-600" },
+    red:    { bg: "bg-red-50",    text: "text-red-600" },
+  };
+
   return (
-    <div>
-      <Navbar />
-      <div className="max-w-5xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-          {role && (
-            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-              role === "ADMIN"
-                ? "bg-red-100 text-red-700"
-                : "bg-blue-100 text-blue-700"
-            }`}>
-              {role}
-            </span>
-          )}
+    <div className="min-h-screen bg-gray-50">
+      <Navbar links={links} />
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Business Dashboard</h1>
+            <p className="text-gray-500 text-sm mt-1">Manage your delivery requests</p>
+          </div>
+          <button onClick={() => router.push("/business/new-delivery")}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition">
+            <Plus className="w-4 h-4" />
+            New Delivery
+          </button>
         </div>
 
-        {loading ? (
-          <p className="text-gray-500">Loading...</p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {cards.map((card) => (
-              <a href={card.link} key={card.label}
-                className={`${card.color} text-white rounded-xl p-6 shadow hover:opacity-90 transition`}>
-                <p className="text-sm opacity-80">{card.label}</p>
-                <p className="text-4xl font-bold mt-2">{card.value}</p>
-                <p className="text-xs opacity-60 mt-2">Click to view →</p>
-              </a>
-            ))}
-          </div>
-        )}
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {stats.map((s) => {
+            const Icon = s.icon;
+            const c = colorMap[s.color];
+            return (
+              <div key={s.label} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${c.bg}`}>
+                  <Icon className={`w-5 h-5 ${c.text}`} />
+                </div>
+                <p className="text-2xl font-bold text-gray-800">{s.value}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+              </div>
+            );
+          })}
+        </div>
 
-        {role === "ADMIN" && (
-          <div className="mt-8 bg-red-50 border border-red-200 rounded-xl p-4">
-            <p className="text-red-700 text-sm font-medium">
-              ⚡ You are logged in as ADMIN — you have full access including delete permissions.
-            </p>
+        {/* Table */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-5 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-800">Recent Deliveries</h2>
           </div>
-        )}
+          {loading ? (
+            <div className="p-8 text-center text-gray-400">Loading...</div>
+          ) : deliveries.length === 0 ? (
+            <div className="p-12 text-center">
+              <Package className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+              <p className="text-gray-400 font-medium">No deliveries yet</p>
+              <p className="text-gray-300 text-sm mt-1">Create your first delivery request</p>
+              <button onClick={() => router.push("/business/new-delivery")}
+                className="mt-4 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm">
+                + New Delivery
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+                  <tr>
+                    {["ID", "Tracking", "Customer", "Driver", "Items", "Price", "Status", "Actions"].map(h => (
+                      <th key={h} className="px-5 py-3 text-left font-medium">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {deliveries.map((d) => (
+                    <tr key={d.id} className="hover:bg-gray-50 transition">
+                      <td className="px-5 py-4 text-gray-400 font-mono text-xs">#{d.id}</td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                            {d.trackingCode}
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(
+                                `${window.location.origin}/track/${d.trackingCode}`
+                              );
+                              toast.success("Tracking link copied!");
+                            }}
+                            className="text-gray-400 hover:text-blue-500 transition text-sm"
+                            title="Copy tracking link">
+                            📋
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 font-medium text-gray-800">{d.customerName}</td>
+                      <td className="px-5 py-4 text-gray-500">
+                        {d.driverName || <span className="text-gray-300">Unassigned</span>}
+                      </td>
+                      <td className="px-5 py-4 text-gray-500 max-w-32 truncate">{d.itemDescription}</td>
+                      <td className="px-5 py-4 font-medium text-gray-800">{d.price} DA</td>
+                      <td className="px-5 py-4"><StatusBadge status={d.status} /></td>
+                      <td className="px-5 py-4">
+                        <a href={`/track/${d.trackingCode}`} target="_blank"
+                          className="text-blue-500 hover:text-blue-700 text-xs font-medium">
+                          Track →
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
