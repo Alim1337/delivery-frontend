@@ -179,6 +179,15 @@ export default function DriverDashboard() {
                       <span className="text-gray-500">{d.dropoffAddress}</span>
                     </div>
                   </div>
+                  {/* Business owner row */}
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 rounded-full bg-orange-400 mt-1.5 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <span className="font-medium">Business: </span>
+                      <span className="text-gray-500">{d.businessName}</span>
+                    </div>
+                  </div>
+                  {/* Customer row */}
                   <div className="flex items-start gap-2">
                     <div className="w-2 h-2 rounded-full bg-purple-400 mt-1.5 flex-shrink-0" />
                     <div className="min-w-0">
@@ -211,7 +220,10 @@ export default function DriverDashboard() {
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1 min-w-0 mr-3">
                     <p className="font-semibold text-gray-800 truncate">{d.itemDescription}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Customer: {d.customerName} — {d.customerPhone}</p>
+                    {/* Business + Customer in subtitle */}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      🏪 {d.businessName} &nbsp;·&nbsp; 👤 {d.customerName} — {d.customerPhone}
+                    </p>
                   </div>
                   <StatusBadge status={d.status} />
                 </div>
