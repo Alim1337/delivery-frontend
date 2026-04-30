@@ -45,7 +45,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-4">
 
-        {/* ── Logo ── */}
+        {/* Logo */}
         <div className="text-center mb-2">
           <div className="inline-flex items-center justify-center w-13 h-13 bg-white rounded-2xl shadow-lg mb-3 p-3">
             <Truck className="w-7 h-7 text-blue-600" />
@@ -54,19 +54,17 @@ export default function LoginPage() {
           <p className="text-blue-200 text-sm mt-1">Smart delivery management</p>
         </div>
 
-        {/* ── Login card ── */}
+        {/* Login card */}
         <div className="bg-white rounded-2xl shadow-2xl shadow-blue-900/20 p-6 md:p-8">
           <h2 className="text-xl font-bold text-gray-800 mb-5">Sign in</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-
-            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <input
                   type="email"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:border-gray-300 transition-colors duration-150 bg-gray-50/50"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:border-gray-300 transition-colors bg-gray-50/50"
                   placeholder="you@example.com"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -74,36 +72,26 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-
-            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <input
                   type={showPass ? "text" : "password"}
-                  className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:border-gray-300 transition-colors duration-150 bg-gray-50/50"
+                  className="w-full pl-10 pr-11 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent hover:border-gray-300 transition-colors bg-gray-50/50"
                   placeholder="••••••••"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-150 p-1 -mr-1"
-                >
+                <button type="button" onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1">
                   {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-3 rounded-xl font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-200 hover:shadow-md hover:shadow-blue-300 hover:-translate-y-px active:translate-y-0 mt-1"
-            >
+            <button type="submit" disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-3 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-200 hover:-translate-y-px active:translate-y-0 mt-1">
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
@@ -115,16 +103,15 @@ export default function LoginPage() {
               ) : "Sign in"}
             </button>
           </form>
-
           <p className="text-center text-sm text-gray-500 mt-5">
             Don't have an account?{" "}
-            <Link href="/register" className="text-blue-600 font-medium hover:text-blue-700 hover:underline transition-colors">
+            <Link href="/register" className="text-blue-600 font-medium hover:underline">
               Create one
             </Link>
           </p>
         </div>
 
-        {/* ── Track without login ── */}
+        {/* Track without login */}
         <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-5 border border-white/20">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-7 h-7 bg-white/15 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -134,20 +121,17 @@ export default function LoginPage() {
           </div>
           <form onSubmit={handleTrack} className="flex gap-2">
             <input
-              className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-sm bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/60 placeholder-gray-400 text-gray-800 font-medium tracking-wide transition-shadow duration-150"
+              className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-sm bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/60 placeholder-gray-400 text-gray-800 font-medium tracking-wide"
               placeholder="DLV-XXXXXXXX"
               value={trackCode}
               onChange={(e) => setTrackCode(e.target.value.toUpperCase())}
             />
-            <button
-              type="submit"
-              className="bg-white text-blue-600 font-semibold px-4 py-2.5 rounded-xl hover:bg-blue-50 active:bg-blue-100 transition-all duration-150 text-sm whitespace-nowrap"
-            >
+            <button type="submit"
+              className="bg-white text-blue-600 font-semibold px-4 py-2.5 rounded-xl hover:bg-blue-50 active:bg-blue-100 transition-all text-sm whitespace-nowrap">
               Track
             </button>
           </form>
         </div>
-
       </div>
     </div>
   );

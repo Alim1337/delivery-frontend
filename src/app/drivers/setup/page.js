@@ -6,10 +6,10 @@ import toast from "react-hot-toast";
 import { Truck } from "lucide-react";
 
 const vehicles = [
-  { id: "BIKE", label: "Bicycle", emoji: "🚲" },
+  { id: "BIKE",    label: "Bicycle", emoji: "🚲" },
   { id: "SCOOTER", label: "Scooter", emoji: "🛵" },
-  { id: "CAR", label: "Car", emoji: "🚗" },
-  { id: "TRUCK", label: "Truck", emoji: "🚚" },
+  { id: "CAR",     label: "Car",     emoji: "🚗" },
+  { id: "TRUCK",   label: "Truck",   emoji: "🚚" },
 ];
 
 export default function DriverSetupPage() {
@@ -34,12 +34,12 @@ export default function DriverSetupPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-600 to-emerald-700 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Truck className="w-8 h-8 text-green-600" />
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 md:p-8">
+        <div className="text-center mb-7">
+          <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Truck className="w-7 h-7 text-green-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Setup your driver profile</h1>
+          <h1 className="text-xl font-bold text-gray-800">Setup your driver profile</h1>
           <p className="text-gray-500 text-sm mt-1">Tell us about your vehicle</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -63,7 +63,7 @@ export default function DriverSetupPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle plate</label>
             <input
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 uppercase"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 uppercase tracking-wider"
               placeholder="e.g. 123-45-678"
               value={form.vehiclePlate}
               onChange={(e) => setForm({ ...form, vehiclePlate: e.target.value.toUpperCase() })}

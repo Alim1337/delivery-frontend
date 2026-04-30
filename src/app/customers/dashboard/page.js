@@ -42,7 +42,7 @@ export default function CustomerDashboard() {
   const handleRate = async (deliveryId, stars) => {
     try {
       await api.post(`/api/deliveries/${deliveryId}/rate`, { rating: stars });
-      toast.success("Thanks for rating!");
+      toast.success("Thanks for rating! ⭐");
       setRating(prev => ({ ...prev, [deliveryId]: stars }));
       fetchDeliveries(true);
     } catch (err) {
@@ -58,7 +58,7 @@ export default function CustomerDashboard() {
     <div className="min-h-screen bg-gray-50">
       <Navbar links={[]} />
       <div className="max-w-4xl mx-auto p-4 md:p-6">
-        <div className="flex justify-between items-center mb-6 md:mb-8">
+        <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-800">My Deliveries</h1>
             <p className="text-gray-500 text-sm mt-0.5">Track your incoming orders</p>
@@ -71,7 +71,7 @@ export default function CustomerDashboard() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12 text-gray-400">Loading your deliveries...</div>
+          <div className="text-center py-16 text-gray-400">Loading your deliveries...</div>
         ) : deliveries.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 md:p-16 text-center border border-gray-100">
             <Package className="w-14 h-14 text-gray-200 mx-auto mb-4" />
@@ -82,7 +82,7 @@ export default function CustomerDashboard() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Active deliveries */}
+            {/* Active */}
             {active.length > 0 && (
               <div>
                 <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
@@ -100,16 +100,18 @@ export default function CustomerDashboard() {
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <StatusBadge status={d.status} />
-                            <a href={`/track/${d.trackingCode}`} target="_blank"
-                              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-500 transition">
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
+                            {d.trackingCode && (
+                              <a href={`/track/${d.trackingCode}`} target="_blank"
+                                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-500 transition">
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            )}
                           </div>
                         </div>
 
-                        {/* Progress bar */}
+                        {/* Progress */}
                         <div className="mb-4">
-                          <div className="relative h-2 bg-gray-100 rounded-full mb-3">
+                          <div className="relative h-2 bg-gray-100 rounded-full mb-2">
                             <div
                               className="absolute h-full bg-blue-600 rounded-full transition-all duration-500"
                               style={{
@@ -119,19 +121,19 @@ export default function CustomerDashboard() {
                               }}
                             />
                           </div>
-                          <div className="flex justify-between text-xs text-gray-400">
+                          <div className="flex justify-between text-xs text-gray-300">
                             <span>Placed</span>
                             <span>Accepted</span>
                             <span>Picked up</span>
                             <span>On way</span>
-                            <span>Delivered</span>
+                            <span>Done</span>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="bg-gray-50 rounded-xl p-3">
                             <p className="text-xs text-gray-400 mb-0.5">Driver</p>
-                            <p className="font-medium text-gray-700">
+                            <p className="font-medium text-gray-700 text-sm">
                               {d.driverName || "Waiting for driver..."}
                             </p>
                             {d.driverPhone && (
@@ -140,7 +142,7 @@ export default function CustomerDashboard() {
                           </div>
                           <div className="bg-gray-50 rounded-xl p-3">
                             <p className="text-xs text-gray-400 mb-0.5">Deliver to</p>
-                            <p className="font-medium text-gray-700">{d.dropoffAddress}</p>
+                            <p className="font-medium text-gray-700 text-sm">{d.dropoffAddress}</p>
                           </div>
                         </div>
                       </div>
@@ -170,16 +172,13 @@ export default function CustomerDashboard() {
                         </div>
                         <StatusBadge status={d.status} />
                       </div>
-
-                      {/* Rating */}
                       {!d.rating && !rating[d.id] && (
                         <div className="mt-4 pt-4 border-t border-gray-50">
                           <p className="text-sm text-gray-500 mb-2">How was your delivery?</p>
                           <div className="flex gap-1">
                             {[1, 2, 3, 4, 5].map((star) => (
-                              <button key={star}
-                                onClick={() => handleRate(d.id, star)}
-                                className="text-2xl md:text-3xl transition hover:scale-110 active:scale-95">
+                              <button key={star} onClick={() => handleRate(d.id, star)}
+                                className="text-2xl transition hover:scale-110 active:scale-95">
                                 <span className={star <= (rating[d.id] || 0) ? "text-yellow-400" : "text-gray-200"}>
                                   ★
                                 </span>
@@ -210,7 +209,7 @@ export default function CustomerDashboard() {
                   {cancelled.map((d) => (
                     <div key={d.id} className="bg-white rounded-2xl border border-gray-100 p-4 opacity-60">
                       <div className="flex justify-between items-center">
-                        <p className="font-medium text-gray-700">{d.itemDescription}</p>
+                        <p className="font-medium text-gray-700 text-sm">{d.itemDescription}</p>
                         <StatusBadge status={d.status} />
                       </div>
                     </div>
@@ -221,7 +220,7 @@ export default function CustomerDashboard() {
           </div>
         )}
 
-        <p className="text-center text-gray-400 text-xs mt-6">
+        <p className="text-center text-gray-300 text-xs mt-8">
           Auto-refreshes every 30 seconds
         </p>
       </div>
