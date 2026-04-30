@@ -9,6 +9,7 @@ import { ArrowLeft, Search } from "lucide-react";
 const links = [
   { href: "/business/dashboard", label: "Dashboard" },
   { href: "/business/new-delivery", label: "New Delivery" },
+  { href: "/business/profile", label: "Profile" },
 ];
 
 export default function NewDeliveryPage() {

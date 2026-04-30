@@ -10,6 +10,7 @@ import { MapPin, Package, Star, CheckCircle, Truck } from "lucide-react";
 const links = [
   { href: "/drivers/dashboard", label: "Available Jobs" },
   { href: "/drivers/my-deliveries", label: "My History" },
+  { href: "/drivers/profile", label: "Profile" },
 ];
 
 const nextStatus = {

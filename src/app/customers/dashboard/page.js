@@ -8,7 +8,10 @@ import StatusBadge from "@/components/StatusBadge";
 import { Package, Star, RefreshCw, ExternalLink } from "lucide-react";
 
 const statusSteps = ["PENDING", "ACCEPTED", "PICKED_UP", "ON_THE_WAY", "DELIVERED"];
-
+const links = [
+  { href: "/customers/dashboard", label: "My Deliveries" },
+  { href: "/customers/profile", label: "Profile" },
+];
 export default function CustomerDashboard() {
   const router = useRouter();
   const [deliveries, setDeliveries] = useState([]);
