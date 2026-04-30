@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Truck, LogOut, Menu, X } from "lucide-react";
+import NotificationBell from "./NotificationBell";
 
 export default function Navbar({ links = [] }) {
   const router = useRouter();
@@ -10,10 +11,12 @@ export default function Navbar({ links = [] }) {
   const [role, setRole] = useState("");
   const [firstName, setFirstName] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [token, setToken] = useState(null);
 
   useEffect(() => {
     setRole(localStorage.getItem("role") || "");
     setFirstName(localStorage.getItem("firstName") || "");
+    setToken(localStorage.getItem("token"));
   }, []);
 
   const logout = () => {
@@ -61,6 +64,7 @@ export default function Navbar({ links = [] }) {
           {firstName && (
             <span className="text-sm text-gray-600 font-medium hidden md:block">{firstName}</span>
           )}
+          {token && <NotificationBell />}
           <button onClick={logout}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-500 transition px-2 md:px-3 py-2 rounded-lg hover:bg-red-50">
             <LogOut className="w-4 h-4" />
@@ -75,7 +79,6 @@ export default function Navbar({ links = [] }) {
         </div>
       </div>
 
-      {/* Mobile menu */}
       {menuOpen && links.length > 0 && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
           {links.map((link) => (

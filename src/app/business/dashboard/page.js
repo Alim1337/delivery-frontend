@@ -57,6 +57,16 @@ export default function BusinessDashboard() {
     green:  { bg: "bg-green-50",  text: "text-green-600" },
     red:    { bg: "bg-red-50",    text: "text-red-600" },
   };
+  const handleCancel = async (id) => {
+  if (!confirm("Cancel this delivery?")) return;
+  try {
+    await api.patch(`/api/deliveries/${id}/cancel`);
+    toast.success("Delivery cancelled");
+    fetchDeliveries();
+  } catch (err) {
+    toast.error(err.response?.data?.error || "Failed to cancel");
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -157,16 +167,26 @@ export default function BusinessDashboard() {
                       <tr key={d.id} className="hover:bg-gray-50 transition">
                         <td className="px-5 py-4 text-gray-400 font-mono text-xs">#{d.id}</td>
                         <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                              {d.trackingCode}
-                            </span>
-                            <button onClick={() => copyTrackingLink(d.trackingCode)}
-                              className="text-gray-400 hover:text-blue-500 transition p-1 rounded hover:bg-gray-100">
-                              <Copy className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
+  <div className="flex items-center gap-2">
+    <a href={`/track/${d.trackingCode}`} target="_blank"
+      className="flex items-center gap-1 text-blue-500 hover:text-blue-700 text-xs font-medium">
+      Track <ExternalLink className="w-3 h-3" />
+    </a>
+    {!["DELIVERED", "CANCELLED"].includes(d.status) && (
+      <button
+        onClick={() => handleCancel(d.id)}
+        className="text-red-400 hover:text-red-600 text-xs font-medium">
+        Cancel
+      </button>
+    )}
+    {!["DELIVERED", "CANCELLED"].includes(d.status) && (
+  <button onClick={() => handleCancel(d.id)}
+    className="text-xs text-red-400 hover:text-red-600 font-medium">
+    Cancel delivery
+  </button>
+)}
+  </div>
+</td>
                         <td className="px-5 py-4 font-medium text-gray-800">{d.customerName}</td>
                         <td className="px-5 py-4 text-gray-500">
                           {d.driverName || <span className="text-gray-300">Unassigned</span>}
