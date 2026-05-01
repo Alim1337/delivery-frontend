@@ -39,7 +39,32 @@ export default function DriverDashboard() {
     if (!token || role !== "DRIVER") { router.push("/login"); return; }
     fetchAll();
   }, []);
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  const role = localStorage.getItem("role");
+  if (!token || role !== "DRIVER") { router.push("/login"); return; }
+  fetchAll();
 
+  // Start sending location if driver is on a delivery
+  const sendLocation = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          await api.patch("/api/deliveries/location", {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          });
+        } catch {}
+      },
+      () => {} // silently fail if denied
+    );
+  };
+
+  sendLocation();
+  const locationInterval = setInterval(sendLocation, 15000);
+  return () => clearInterval(locationInterval);
+}, []);
   const fetchAll = async () => {
     try {
       const [availRes, myRes, profileRes] = await Promise.all([

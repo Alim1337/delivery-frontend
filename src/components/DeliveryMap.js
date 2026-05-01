@@ -1,169 +1,138 @@
 "use client";
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+import { useEffect, useRef } from "react";
 
-// Fix leaflet default icon issue in Next.js
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-});
-
-// Custom colored markers
-const createIcon = (color) => L.divIcon({
-  className: "",
-  html: `
-    <div style="
-      background: ${color};
-      width: 28px;
-      height: 28px;
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      border: 3px solid white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    "></div>
-  `,
-  iconSize: [28, 28],
-  iconAnchor: [14, 28],
-  popupAnchor: [0, -28],
-});
-
-const pickupIcon = createIcon("#3B82F6"); // blue
-const dropoffIcon = createIcon("#10B981"); // green
-
-// Geocode an address using OpenStreetMap Nominatim (free, no API key)
-async function geocode(address) {
-  try {
-    const encoded = encodeURIComponent(address);
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1`,
-      { headers: { "Accept-Language": "en" } }
-    );
-    const data = await res.json();
-    if (data.length > 0) {
-      return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-    }
-  } catch {}
-  return null;
-}
-
-// Auto-fit map bounds
-function FitBounds({ coords }) {
-  const map = useMap();
-  useEffect(() => {
-    if (coords.length >= 2) {
-      const bounds = L.latLngBounds(coords);
-      map.fitBounds(bounds, { padding: [40, 40] });
-    } else if (coords.length === 1) {
-      map.setView(coords[0], 13);
-    }
-  }, [coords, map]);
-  return null;
-}
-
-export default function DeliveryMap({ pickupAddress, dropoffAddress, status }) {
-  const [pickupCoords, setPickupCoords] = useState(null);
-  const [dropoffCoords, setDropoffCoords] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+export default function DeliveryMap({ pickupAddress, dropoffAddress, driverLat, driverLng, driverName, status }) {
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const driverMarkerRef = useRef(null);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const [pickup, dropoff] = await Promise.all([
-        geocode(pickupAddress),
-        geocode(dropoffAddress),
-      ]);
-      setPickupCoords(pickup);
-      setDropoffCoords(dropoff);
-      setLoading(false);
-      if (!pickup && !dropoff) setError(true);
+    // Only run on client
+    if (typeof window === "undefined") return;
+    if (mapInstanceRef.current) return; // already initialized
+
+    const initMap = async () => {
+      const L = (await import("leaflet")).default;
+      await import("leaflet/dist/leaflet.css");
+
+      // Default to Algiers if no coordinates
+      const center = driverLat && driverLng
+        ? [driverLat, driverLng]
+        : [36.7538, 3.0588];
+
+      const map = L.map(mapRef.current, {
+        center,
+        zoom: 13,
+        zoomControl: true,
+        scrollWheelZoom: false,
+      });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+        maxZoom: 19,
+      }).addTo(map);
+
+      mapInstanceRef.current = map;
+
+      // Driver marker
+      if (driverLat && driverLng) {
+        const driverIcon = L.divIcon({
+          html: `<div style="
+            background: #16a34a;
+            border: 3px solid white;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          ">🚗</div>`,
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+          className: "",
+        });
+
+        driverMarkerRef.current = L.marker([driverLat, driverLng], { icon: driverIcon })
+          .addTo(map)
+          .bindPopup(`<b>${driverName || "Driver"}</b><br>On the way`)
+          .openPopup();
+      }
+
+      // Pickup marker
+      const pickupIcon = L.divIcon({
+        html: `<div style="
+          background: #2563eb;
+          border: 3px solid white;
+          border-radius: 50%;
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        ">📦</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        className: "",
+      });
+
+      // Dropoff marker
+      const dropoffIcon = L.divIcon({
+        html: `<div style="
+          background: #dc2626;
+          border: 3px solid white;
+          border-radius: 50%;
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        ">🏠</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        className: "",
+      });
+
+      // Add placeholder markers near driver location
+      if (driverLat && driverLng) {
+        L.marker([driverLat + 0.005, driverLng - 0.005], { icon: pickupIcon })
+          .addTo(map)
+          .bindPopup(`<b>Pickup</b><br>${pickupAddress}`);
+
+        L.marker([driverLat - 0.008, driverLng + 0.008], { icon: dropoffIcon })
+          .addTo(map)
+          .bindPopup(`<b>Delivery</b><br>${dropoffAddress}`);
+      }
     };
-    if (pickupAddress || dropoffAddress) load();
-  }, [pickupAddress, dropoffAddress]);
 
-  if (loading) {
-    return (
-      <div className="h-48 bg-gray-100 rounded-2xl flex items-center justify-center">
-        <div className="flex items-center gap-2 text-gray-400 text-sm">
-          <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-          Finding locations on map...
-        </div>
-      </div>
-    );
-  }
+    initMap();
+  }, []);
 
-  if (error || (!pickupCoords && !dropoffCoords)) {
-    return (
-      <div className="h-48 bg-gray-100 rounded-2xl flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-400 text-sm">Could not load map</p>
-          <p className="text-gray-300 text-xs mt-1">Address not found on map</p>
-        </div>
-      </div>
-    );
-  }
+  // Update driver marker when location changes
+  useEffect(() => {
+    if (!mapInstanceRef.current || !driverMarkerRef.current) return;
+    if (!driverLat || !driverLng) return;
 
-  const center = pickupCoords || dropoffCoords;
-  const allCoords = [pickupCoords, dropoffCoords].filter(Boolean);
-  const delivered = status === "DELIVERED";
+    driverMarkerRef.current.setLatLng([driverLat, driverLng]);
+    mapInstanceRef.current.panTo([driverLat, driverLng]);
+  }, [driverLat, driverLng]);
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ height: "240px" }}>
-      <MapContainer
-        center={center}
-        zoom={12}
-        style={{ height: "100%", width: "100%" }}
-        zoomControl={true}
-        scrollWheelZoom={false}>
-
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-
-        <FitBounds coords={allCoords} />
-
-        {/* Pickup marker */}
-        {pickupCoords && (
-          <Marker position={pickupCoords} icon={pickupIcon}>
-            <Popup>
-              <div className="text-sm">
-                <p className="font-semibold text-blue-600 mb-1">📦 Pickup point</p>
-                <p className="text-gray-600">{pickupAddress}</p>
-              </div>
-            </Popup>
-          </Marker>
-        )}
-
-        {/* Dropoff marker */}
-        {dropoffCoords && (
-          <Marker position={dropoffCoords} icon={dropoffIcon}>
-            <Popup>
-              <div className="text-sm">
-                <p className="font-semibold text-green-600 mb-1">
-                  {delivered ? "✅ Delivered here" : "🏠 Delivery point"}
-                </p>
-                <p className="text-gray-600">{dropoffAddress}</p>
-              </div>
-            </Popup>
-          </Marker>
-        )}
-
-        {/* Route line between pickup and dropoff */}
-        {pickupCoords && dropoffCoords && (
-          <Polyline
-            positions={[pickupCoords, dropoffCoords]}
-            color={delivered ? "#10B981" : "#3B82F6"}
-            weight={3}
-            dashArray={delivered ? undefined : "8 6"}
-            opacity={0.7}
-          />
-        )}
-      </MapContainer>
+    <div className="relative">
+      <div ref={mapRef} className="w-full h-56 md:h-72 rounded-2xl overflow-hidden z-0" />
+      {!driverLat && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-2xl">
+          <div className="text-center">
+            <p className="text-2xl mb-1">🗺️</p>
+            <p className="text-sm text-gray-500 font-medium">Map available when driver is assigned</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

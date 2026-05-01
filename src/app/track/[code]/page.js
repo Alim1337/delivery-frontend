@@ -1,11 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import api from "@/lib/axios";
 import {
   Truck, MapPin, Package, CheckCircle,
   Clock, XCircle, Search, Building2, User, Phone
 } from "lucide-react";
+
+const DeliveryMap = dynamic(() => import("@/components/DeliveryMap"), { ssr: false });
 
 const statusSteps = [
   { key: "PENDING",    label: "Order Placed",    icon: Clock },
@@ -31,6 +34,7 @@ export default function TrackPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
+  const [driverLocation, setDriverLocation] = useState(null);
 
   useEffect(() => {
     if (params?.code && params.code !== "DLV-00000000") {
@@ -41,6 +45,28 @@ export default function TrackPage() {
       setLoading(false);
     }
   }, [params?.code]);
+
+  useEffect(() => {
+    if (!delivery?.trackingCode) return;
+    if (!["ACCEPTED", "PICKED_UP", "ON_THE_WAY"].includes(delivery?.status)) return;
+
+    const fetchLocation = async () => {
+      try {
+        const res = await api.get(`/api/deliveries/track/${delivery.trackingCode}/location`);
+        if (res.data.available) {
+          setDriverLocation({
+            lat: res.data.latitude,
+            lng: res.data.longitude,
+            name: res.data.driverName,
+          });
+        }
+      } catch {}
+    };
+
+    fetchLocation();
+    const interval = setInterval(fetchLocation, 15000);
+    return () => clearInterval(interval);
+  }, [delivery?.trackingCode, delivery?.status]);
 
   const fetchDelivery = async (code) => {
     try {
@@ -209,6 +235,34 @@ export default function TrackPage() {
                 </div>
               </div>
             </div>
+
+            {/* Map — show when driver is active */}
+            {["ACCEPTED", "PICKED_UP", "ON_THE_WAY"].includes(delivery.status) && (
+              <div className="bg-white rounded-2xl p-5 shadow-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-gray-400 uppercase font-semibold tracking-wide">
+                    Live Tracking
+                  </p>
+                  {delivery.status === "ON_THE_WAY" && (
+                    <span className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                      Driver is on the way
+                    </span>
+                  )}
+                </div>
+                <DeliveryMap
+                  pickupAddress={delivery.pickupAddress}
+                  dropoffAddress={delivery.dropoffAddress}
+                  driverLat={driverLocation?.lat}
+                  driverLng={driverLocation?.lng}
+                  driverName={driverLocation?.name}
+                  status={delivery.status}
+                />
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  Updates every 15 seconds
+                </p>
+              </div>
+            )}
 
             {/* People involved card */}
             <div className="bg-white rounded-2xl p-5 shadow-xl">
