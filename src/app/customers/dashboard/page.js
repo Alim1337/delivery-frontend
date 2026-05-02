@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
@@ -18,21 +18,22 @@ const links = [
 const statusSteps = ["PENDING", "ACCEPTED", "PICKED_UP", "ON_THE_WAY", "DELIVERED"];
 
 const statusInfo = {
-  PENDING:    { label: "Waiting for driver",   color: "bg-yellow-50 border-yellow-200 text-yellow-700", icon: Clock },
-  ACCEPTED:   { label: "Driver on the way",    color: "bg-blue-50 border-blue-200 text-blue-700",       icon: Truck },
-  PICKED_UP:  { label: "Package picked up",    color: "bg-indigo-50 border-indigo-200 text-indigo-700", icon: Package },
-  ON_THE_WAY: { label: "Coming your way! 🚗",  color: "bg-purple-50 border-purple-200 text-purple-700", icon: Truck },
-  DELIVERED:  { label: "Delivered ✅",          color: "bg-green-50 border-green-200 text-green-700",    icon: Package },
-  CANCELLED:  { label: "Cancelled",             color: "bg-red-50 border-red-200 text-red-700",          icon: Package },
+  PENDING:    { label: "Waiting for driver",  color: "bg-yellow-50 border-yellow-200 text-yellow-700",  icon: Clock },
+  ACCEPTED:   { label: "Driver assigned",     color: "bg-blue-50 border-blue-200 text-blue-700",        icon: Truck },
+  PICKED_UP:  { label: "Package picked up",   color: "bg-indigo-50 border-indigo-200 text-indigo-700",  icon: Package },
+  ON_THE_WAY: { label: "On the way! 🚗",      color: "bg-purple-50 border-purple-200 text-purple-700",  icon: Truck },
+  DELIVERED:  { label: "Delivered ✅",         color: "bg-green-50 border-green-200 text-green-700",     icon: Package },
+  CANCELLED:  { label: "Cancelled",            color: "bg-red-50 border-red-200 text-red-700",           icon: Package },
 };
 
 export default function CustomerDashboard() {
   const router = useRouter();
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [rating, setRating] = useState({});
   const [refreshing, setRefreshing] = useState(false);
+  const [rating, setRating] = useState({});
   const [tab, setTab] = useState("active");
+  const intervalRef = useRef(null);
 
   const fetchDeliveries = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -53,8 +54,10 @@ export default function CustomerDashboard() {
     const role = localStorage.getItem("role");
     if (!token || role !== "CUSTOMER") { router.push("/login"); return; }
     fetchDeliveries();
-    const interval = setInterval(() => fetchDeliveries(true), 30000);
-    return () => clearInterval(interval);
+    intervalRef.current = setInterval(() => fetchDeliveries(true), 45000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, []);
 
   const handleRate = async (deliveryId, stars) => {
@@ -71,13 +74,6 @@ export default function CustomerDashboard() {
   const active = deliveries.filter(d => !["DELIVERED", "CANCELLED"].includes(d.status));
   const completed = deliveries.filter(d => d.status === "DELIVERED");
   const cancelled = deliveries.filter(d => d.status === "CANCELLED");
-
-  const tabs = [
-    { key: "active", label: "Active", count: active.length, color: "blue" },
-    { key: "completed", label: "Completed", count: completed.length, color: "green" },
-    { key: "cancelled", label: "Cancelled", count: cancelled.length, color: "red" },
-  ];
-
   const tabData = { active, completed, cancelled };
   const current = tabData[tab] || [];
 
@@ -87,56 +83,51 @@ export default function CustomerDashboard() {
       <div className="max-w-4xl mx-auto p-4 md:p-6">
 
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-5">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-800">My Deliveries</h1>
             <p className="text-gray-500 text-sm mt-0.5">Track all your incoming orders</p>
           </div>
           <button onClick={() => fetchDeliveries(true)} disabled={refreshing}
-            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 bg-white border border-gray-200 px-3 py-2 rounded-xl transition disabled:opacity-50">
+            className="flex items-center gap-2 text-sm text-gray-500 bg-white border border-gray-200 px-3 py-2 rounded-xl transition disabled:opacity-50 hover:bg-gray-50">
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             <span className="hidden sm:block">Refresh</span>
           </button>
         </div>
 
-        {/* Stats summary */}
+        {/* Tabs */}
         {!loading && deliveries.length > 0 && (
-          <div className="grid grid-cols-3 gap-3 mb-5">
-            {tabs.map(t => {
-              const colors = {
-                blue:  "bg-blue-50 text-blue-600",
-                green: "bg-green-50 text-green-600",
-                red:   "bg-red-50 text-red-500",
-              };
-              return (
-                <button key={t.key} onClick={() => setTab(t.key)}
-                  className={`p-3 rounded-xl border-2 transition text-center ${
-                    tab === t.key
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-100 bg-white hover:border-gray-200"
-                  }`}>
-                  <p className={`text-xl font-bold ${tab === t.key ? "text-blue-600" : "text-gray-800"}`}>
-                    {t.count}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">{t.label}</p>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-3 gap-2 mb-5">
+            {[
+              { key: "active", label: "Active", count: active.length },
+              { key: "completed", label: "Done", count: completed.length },
+              { key: "cancelled", label: "Cancelled", count: cancelled.length },
+            ].map(t => (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className={`p-3 rounded-xl border-2 transition text-center ${
+                  tab === t.key
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-gray-100 bg-white hover:border-gray-200"
+                }`}>
+                <p className={`text-xl font-bold ${tab === t.key ? "text-blue-600" : "text-gray-800"}`}>
+                  {t.count}
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">{t.label}</p>
+              </button>
+            ))}
           </div>
         )}
 
         {loading ? (
           <div className="text-center py-16">
             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-gray-400">Loading your deliveries...</p>
+            <p className="text-gray-400 text-sm">Loading your deliveries...</p>
           </div>
         ) : deliveries.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 md:p-16 text-center border border-gray-100">
+          <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
             <Package className="w-14 h-14 text-gray-200 mx-auto mb-4" />
             <p className="text-gray-400 font-medium text-lg">No deliveries yet</p>
-            <p className="text-gray-300 text-sm mt-1">
-              When a business sends you something, it will appear here
-            </p>
+            <p className="text-gray-300 text-sm mt-1">When a business sends you something, it appears here</p>
           </div>
         ) : current.length === 0 ? (
           <div className="bg-white rounded-2xl p-10 text-center border border-gray-100">
@@ -154,18 +145,20 @@ export default function CustomerDashboard() {
 
               return (
                 <div key={d.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-
                   {/* Status banner */}
                   <div className={`flex items-center gap-2 px-4 py-2.5 border-b ${info.color}`}>
                     <StatusIcon className="w-4 h-4 flex-shrink-0" />
-                    <span className="text-sm font-semibold">{info.label}</span>
+                    <span className="text-sm font-semibold flex-1">{info.label}</span>
                     {d.status === "ON_THE_WAY" && (
-                      <span className="ml-auto text-xs animate-pulse">● Live</span>
+                      <span className="text-xs font-medium flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse" />
+                        Live
+                      </span>
                     )}
                   </div>
 
                   <div className="p-4 md:p-5">
-                    {/* Top row */}
+                    {/* Top */}
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex-1 min-w-0 mr-3">
                         <p className="font-semibold text-gray-800">{d.itemDescription}</p>
@@ -173,45 +166,32 @@ export default function CustomerDashboard() {
                           #{d.id} · {new Date(d.createdAt).toLocaleDateString()}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {d.trackingCode && (
-                          <a href={`/track/${d.trackingCode}`} target="_blank"
-                            className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 font-medium bg-blue-50 px-2 py-1 rounded-lg transition">
-                            <ExternalLink className="w-3 h-3" />
-                            Track
-                          </a>
-                        )}
-                      </div>
+                      {d.trackingCode && (
+                        <a href={`/track/${d.trackingCode}`} target="_blank"
+                          className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-lg font-medium flex-shrink-0">
+                          <ExternalLink className="w-3 h-3" />
+                          Track
+                        </a>
+                      )}
                     </div>
 
-                    {/* Progress bar — only for active */}
+                    {/* Progress */}
                     {isActive && (
                       <div className="mb-4">
-                        <div className="relative h-2 bg-gray-100 rounded-full mb-2">
-                          <div
-                            className="absolute h-full bg-blue-600 rounded-full transition-all duration-500"
-                            style={{
-                              width: step >= 0
-                                ? `${(step / (statusSteps.length - 1)) * 100}%`
-                                : "0%"
-                            }}
-                          />
+                        <div className="relative h-1.5 bg-gray-100 rounded-full mb-2">
+                          <div className="absolute h-full bg-blue-600 rounded-full transition-all duration-700"
+                            style={{ width: step >= 0 ? `${(step / (statusSteps.length - 1)) * 100}%` : "0%" }} />
                         </div>
                         <div className="flex justify-between text-xs text-gray-300">
-                          <span>Placed</span>
-                          <span>Accepted</span>
-                          <span>Picked up</span>
-                          <span>On way</span>
-                          <span>Done</span>
+                          <span>Placed</span><span>Accepted</span>
+                          <span>Picked up</span><span>On way</span><span>Done</span>
                         </div>
                       </div>
                     )}
 
                     {/* Info grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-
-                      {/* Business */}
-                      <div className="flex items-center gap-2.5 p-2.5 bg-purple-50 rounded-xl">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="flex items-center gap-2.5 p-3 bg-purple-50 rounded-xl">
                         <div className="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           <Building2 className="w-3.5 h-3.5 text-purple-600" />
                         </div>
@@ -221,30 +201,20 @@ export default function CustomerDashboard() {
                         </div>
                       </div>
 
-                      {/* Driver */}
-                      <div className={`flex items-center gap-2.5 p-2.5 rounded-xl ${
-                        d.driverName ? "bg-green-50" : "bg-gray-50"
-                      }`}>
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          d.driverName ? "bg-green-100" : "bg-gray-100"
-                        }`}>
+                      <div className={`flex items-center gap-2.5 p-3 rounded-xl ${d.driverName ? "bg-green-50" : "bg-gray-50"}`}>
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${d.driverName ? "bg-green-100" : "bg-gray-100"}`}>
                           <Truck className={`w-3.5 h-3.5 ${d.driverName ? "text-green-600" : "text-gray-400"}`} />
                         </div>
                         <div className="min-w-0">
                           <p className={`text-xs ${d.driverName ? "text-green-400" : "text-gray-400"}`}>Driver</p>
-                          <p className={`text-sm font-medium truncate ${
-                            d.driverName ? "text-green-800" : "text-gray-400 italic"
-                          }`}>
+                          <p className={`text-sm font-medium truncate ${d.driverName ? "text-green-800" : "text-gray-400 italic"}`}>
                             {d.driverName || "Waiting for driver..."}
                           </p>
-                          {d.driverPhone && (
-                            <p className="text-xs text-green-500">{d.driverPhone}</p>
-                          )}
+                          {d.driverPhone && <p className="text-xs text-green-500">{d.driverPhone}</p>}
                         </div>
                       </div>
 
-                      {/* Delivery address */}
-                      <div className="flex items-center gap-2.5 p-2.5 bg-gray-50 rounded-xl sm:col-span-2">
+                      <div className="flex items-center gap-2.5 p-3 bg-gray-50 rounded-xl sm:col-span-2">
                         <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           <MapPin className="w-3.5 h-3.5 text-gray-500" />
                         </div>
@@ -255,19 +225,15 @@ export default function CustomerDashboard() {
                       </div>
                     </div>
 
-                    {/* Rating — only for delivered */}
+                    {/* Rating */}
                     {isDelivered && !d.rating && !rating[d.id] && (
-                      <div className="pt-3 border-t border-gray-50">
-                        <p className="text-sm text-gray-500 mb-2 font-medium">
-                          How was your delivery?
-                        </p>
+                      <div className="mt-4 pt-4 border-t border-gray-50">
+                        <p className="text-sm text-gray-500 mb-2 font-medium">How was your delivery?</p>
                         <div className="flex gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
+                          {[1,2,3,4,5].map(star => (
                             <button key={star} onClick={() => handleRate(d.id, star)}
-                              className="text-2xl md:text-3xl transition-transform hover:scale-125 active:scale-95">
-                              <span className={star <= (rating[d.id] || 0) ? "text-yellow-400" : "text-gray-200"}>
-                                ★
-                              </span>
+                              className="text-2xl transition-transform hover:scale-125 active:scale-95">
+                              <span className={star <= (rating[d.id] || 0) ? "text-yellow-400" : "text-gray-200"}>★</span>
                             </button>
                           ))}
                         </div>
@@ -275,13 +241,11 @@ export default function CustomerDashboard() {
                     )}
 
                     {isDelivered && (d.rating || rating[d.id]) && (
-                      <div className="pt-3 border-t border-gray-50 flex items-center gap-1.5">
+                      <div className="mt-3 pt-3 border-t border-gray-50 flex items-center gap-1">
                         {[1,2,3,4,5].map(s => (
                           <span key={s} className={`text-lg ${s <= (d.rating || rating[d.id]) ? "text-yellow-400" : "text-gray-200"}`}>★</span>
                         ))}
-                        <span className="text-sm text-gray-400 ml-1">
-                          You rated this {d.rating || rating[d.id]}/5
-                        </span>
+                        <span className="text-xs text-gray-400 ml-1">You rated {d.rating || rating[d.id]}/5</span>
                       </div>
                     )}
                   </div>
@@ -292,8 +256,8 @@ export default function CustomerDashboard() {
         )}
 
         {!loading && deliveries.length > 0 && (
-          <p className="text-center text-gray-300 text-xs mt-6 pb-4">
-            🔄 Auto-refreshes every 30 seconds
+          <p className="text-center text-gray-300 text-xs mt-6 pb-2">
+            🔄 Auto-refreshes every 45 seconds
           </p>
         )}
       </div>

@@ -2,6 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
+  timeout: 10000, // 10 second timeout — prevents hanging requests
 });
 
 // Add token to every request
@@ -18,10 +19,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (typeof window !== "undefined") {
-      const status = error.response?.status;
-      // 401 = unauthorized (expired token), 403 = forbidden
-      if (status === 401) {
-        // Clear everything and redirect to login
+      if (error.response?.status === 401) {
         localStorage.clear();
         window.location.href = "/login";
       }
