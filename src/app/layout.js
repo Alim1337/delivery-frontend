@@ -9,7 +9,6 @@ export const metadata = {
   title: "DeliverFlow",
   description: "Smart delivery management",
   manifest: "/manifest.json",
-  themeColor: "#2563eb",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -52,7 +51,7 @@ export default function RootLayout({ children }) {
             style: { borderRadius: "10px", fontFamily: "inherit" },
           }}
         />
-         <InstallPrompt />
+        <InstallPrompt />
         {children}
       </body>
     </html>

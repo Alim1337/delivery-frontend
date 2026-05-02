@@ -44,6 +44,48 @@ export default function BusinessDashboard() {
     toast.success("Tracking link copied!");
   };
 
+  // ✅ handleCancel is its own function, closed properly
+  const handleCancel = async (id) => {
+    if (!confirm("Cancel this delivery?")) return;
+    try {
+      await api.patch(`/api/deliveries/${id}/cancel`);
+      toast.success("Delivery cancelled");
+      fetchDeliveries();
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to cancel");
+    }
+  };
+
+  // ✅ exportCSV is its own separate function
+  const exportCSV = () => {
+    if (deliveries.length === 0) {
+      toast.error("No deliveries to export");
+      return;
+    }
+    const headers = ["ID", "Tracking Code", "Customer", "Driver", "Item", "Price (DA)", "Status", "Date"];
+    const rows = deliveries.map(d => [
+      d.id,
+      d.trackingCode,
+      d.customerName,
+      d.driverName || "Unassigned",
+      d.itemDescription,
+      d.price,
+      d.status,
+      new Date(d.createdAt).toLocaleDateString(),
+    ]);
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${cell}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `deliveries-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV downloaded!");
+  };
+
   const stats = [
     { label: "Total", value: deliveries.length, icon: Package, color: "blue" },
     { label: "Active", value: deliveries.filter(d => !["DELIVERED","CANCELLED"].includes(d.status)).length, icon: Clock, color: "yellow" },
@@ -57,47 +99,6 @@ export default function BusinessDashboard() {
     green:  { bg: "bg-green-50",  text: "text-green-600" },
     red:    { bg: "bg-red-50",    text: "text-red-600" },
   };
-  const handleCancel = async (id) => {
-  if (!confirm("Cancel this delivery?")) return;
-  try {
-    await api.patch(`/api/deliveries/${id}/cancel`);
-    toast.success("Delivery cancelled");
-    fetchDeliveries();
-  } catch (err) {
-    toast.error(err.response?.data?.error || "Failed to cancel");
-  }
-  const exportCSV = () => {
-  if (deliveries.length === 0) {
-    toast.error("No deliveries to export");
-    return;
-  }
-
-  const headers = ["ID", "Tracking Code", "Customer", "Driver", "Item", "Price (DA)", "Status", "Date"];
-  const rows = deliveries.map(d => [
-    d.id,
-    d.trackingCode,
-    d.customerName,
-    d.driverName || "Unassigned",
-    d.itemDescription,
-    d.price,
-    d.status,
-    new Date(d.createdAt).toLocaleDateString(),
-  ]);
-
-  const csvContent = [headers, ...rows]
-    .map(row => row.map(cell => `"${cell}"`).join(","))
-    .join("\n");
-
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `deliveries-${new Date().toISOString().split("T")[0]}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
-  toast.success("CSV downloaded!");
-};
-};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,16 +110,16 @@ export default function BusinessDashboard() {
             <p className="text-gray-500 text-sm mt-0.5">Manage your delivery requests</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-  <button onClick={exportCSV}
-    className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-medium transition w-full sm:w-auto">
-    📥 Export CSV
-  </button>
-  <button onClick={() => router.push("/business/new-delivery")}
-    className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition w-full sm:w-auto">
-    <Plus className="w-4 h-4" />
-    New Delivery
-  </button>
-</div>
+            <button onClick={exportCSV}
+              className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-medium transition w-full sm:w-auto">
+              📥 Export CSV
+            </button>
+            <button onClick={() => router.push("/business/new-delivery")}
+              className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition w-full sm:w-auto">
+              <Plus className="w-4 h-4" />
+              New Delivery
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -185,6 +186,12 @@ export default function BusinessDashboard() {
                       <span>Driver: {d.driverName || "Unassigned"}</span>
                       <span className="font-semibold text-gray-700">{d.price} DA</span>
                     </div>
+                    {!["DELIVERED", "CANCELLED"].includes(d.status) && (
+                      <button onClick={() => handleCancel(d.id)}
+                        className="text-xs text-red-400 hover:text-red-600 font-medium">
+                        Cancel delivery
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -204,26 +211,10 @@ export default function BusinessDashboard() {
                       <tr key={d.id} className="hover:bg-gray-50 transition">
                         <td className="px-5 py-4 text-gray-400 font-mono text-xs">#{d.id}</td>
                         <td className="px-5 py-4">
-  <div className="flex items-center gap-2">
-    <a href={`/track/${d.trackingCode}`} target="_blank"
-      className="flex items-center gap-1 text-blue-500 hover:text-blue-700 text-xs font-medium">
-      Track <ExternalLink className="w-3 h-3" />
-    </a>
-    {!["DELIVERED", "CANCELLED"].includes(d.status) && (
-      <button
-        onClick={() => handleCancel(d.id)}
-        className="text-red-400 hover:text-red-600 text-xs font-medium">
-        Cancel
-      </button>
-    )}
-    {!["DELIVERED", "CANCELLED"].includes(d.status) && (
-  <button onClick={() => handleCancel(d.id)}
-    className="text-xs text-red-400 hover:text-red-600 font-medium">
-    Cancel delivery
-  </button>
-)}
-  </div>
-</td>
+                          <span className="font-mono text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                            {d.trackingCode}
+                          </span>
+                        </td>
                         <td className="px-5 py-4 font-medium text-gray-800">{d.customerName}</td>
                         <td className="px-5 py-4 text-gray-500">
                           {d.driverName || <span className="text-gray-300">Unassigned</span>}
@@ -232,10 +223,18 @@ export default function BusinessDashboard() {
                         <td className="px-5 py-4 font-medium text-gray-800">{d.price} DA</td>
                         <td className="px-5 py-4"><StatusBadge status={d.status} /></td>
                         <td className="px-5 py-4">
-                          <a href={`/track/${d.trackingCode}`} target="_blank"
-                            className="flex items-center gap-1 text-blue-500 hover:text-blue-700 text-xs font-medium">
-                            Track <ExternalLink className="w-3 h-3" />
-                          </a>
+                          <div className="flex items-center gap-3">
+                            <a href={`/track/${d.trackingCode}`} target="_blank"
+                              className="flex items-center gap-1 text-blue-500 hover:text-blue-700 text-xs font-medium">
+                              Track <ExternalLink className="w-3 h-3" />
+                            </a>
+                            {!["DELIVERED", "CANCELLED"].includes(d.status) && (
+                              <button onClick={() => handleCancel(d.id)}
+                                className="text-xs text-red-400 hover:text-red-600 font-medium">
+                                Cancel
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
