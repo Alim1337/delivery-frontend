@@ -66,6 +66,37 @@ export default function BusinessDashboard() {
   } catch (err) {
     toast.error(err.response?.data?.error || "Failed to cancel");
   }
+  const exportCSV = () => {
+  if (deliveries.length === 0) {
+    toast.error("No deliveries to export");
+    return;
+  }
+
+  const headers = ["ID", "Tracking Code", "Customer", "Driver", "Item", "Price (DA)", "Status", "Date"];
+  const rows = deliveries.map(d => [
+    d.id,
+    d.trackingCode,
+    d.customerName,
+    d.driverName || "Unassigned",
+    d.itemDescription,
+    d.price,
+    d.status,
+    new Date(d.createdAt).toLocaleDateString(),
+  ]);
+
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(cell => `"${cell}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `deliveries-${new Date().toISOString().split("T")[0]}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+  toast.success("CSV downloaded!");
+};
 };
 
   return (
@@ -77,11 +108,17 @@ export default function BusinessDashboard() {
             <h1 className="text-xl md:text-2xl font-bold text-gray-800">Business Dashboard</h1>
             <p className="text-gray-500 text-sm mt-0.5">Manage your delivery requests</p>
           </div>
-          <button onClick={() => router.push("/business/new-delivery")}
-            className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition w-full sm:w-auto">
-            <Plus className="w-4 h-4" />
-            New Delivery
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+  <button onClick={exportCSV}
+    className="flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-medium transition w-full sm:w-auto">
+    📥 Export CSV
+  </button>
+  <button onClick={() => router.push("/business/new-delivery")}
+    className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition w-full sm:w-auto">
+    <Plus className="w-4 h-4" />
+    New Delivery
+  </button>
+</div>
         </div>
 
         {/* Stats */}
