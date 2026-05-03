@@ -2,7 +2,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/axios";
-import { invalidatePattern } from "@/lib/cache";
 import toast from "react-hot-toast";
 import Navbar from "@/components/Navbar";
 import StatusBadge from "@/components/StatusBadge";
@@ -66,7 +65,6 @@ export default function BusinessDashboard() {
     try {
       await api.patch(`/api/deliveries/${id}/cancel`);
       toast.success("Delivery cancelled");
-      invalidatePattern("delivery");
       fetchDeliveries(true);
     } catch (err) {
       toast.error(err.response?.data?.error || "Failed to cancel");
