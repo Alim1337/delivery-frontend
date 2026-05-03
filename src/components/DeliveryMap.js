@@ -1,24 +1,63 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-export default function DeliveryMap({ pickupAddress, dropoffAddress, driverLat, driverLng, driverName, status }) {
+async function geocode(address) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`,
+      { headers: { "Accept-Language": "en" } }
+    );
+    const data = await res.json();
+    if (data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch {}
+  return null;
+}
+
+export default function DeliveryMap({
+  pickupAddress,
+  dropoffAddress,
+  driverLat,
+  driverLng,
+  driverName,
+  status,
+}) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const driverMarkerRef = useRef(null);
+  const [geocoded, setGeocode] = useState({ pickup: null, dropoff: null });
+  const [mapReady, setMapReady] = useState(false);
 
+  // Geocode addresses on mount
   useEffect(() => {
-    // Only run on client
+    const doGeocode = async () => {
+      const [pickup, dropoff] = await Promise.all([
+        geocode(pickupAddress),
+        geocode(dropoffAddress),
+      ]);
+      setGeocode({ pickup, dropoff });
+    };
+    if (pickupAddress || dropoffAddress) doGeocode();
+  }, [pickupAddress, dropoffAddress]);
+
+  // Initialize map
+  useEffect(() => {
     if (typeof window === "undefined") return;
-    if (mapInstanceRef.current) return; // already initialized
+    if (mapInstanceRef.current) return;
 
     const initMap = async () => {
       const L = (await import("leaflet")).default;
       await import("leaflet/dist/leaflet.css");
 
-      // Default to Algiers if no coordinates
+      // Determine center: driver > pickup > dropoff > Algiers
       const center = driverLat && driverLng
         ? [driverLat, driverLng]
-        : [36.7538, 3.0588];
+        : geocoded.pickup
+          ? [geocoded.pickup.lat, geocoded.pickup.lng]
+          : geocoded.dropoff
+            ? [geocoded.dropoff.lat, geocoded.dropoff.lng]
+            : [36.7538, 3.0588];
 
       const map = L.map(mapRef.current, {
         center,
@@ -28,108 +67,92 @@ export default function DeliveryMap({ pickupAddress, dropoffAddress, driverLat, 
       });
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
+        attribution: "© OpenStreetMap",
         maxZoom: 19,
       }).addTo(map);
 
       mapInstanceRef.current = map;
+      setMapReady(true);
+    };
+
+    // Small delay to ensure DOM is ready
+    setTimeout(initMap, 100);
+  }, []);
+
+  // Add markers once map is ready + geocoding done
+  useEffect(() => {
+    if (!mapReady || !mapInstanceRef.current) return;
+
+    const addMarkers = async () => {
+      const L = (await import("leaflet")).default;
+      const map = mapInstanceRef.current;
+
+      const makeIcon = (emoji, color) => L.divIcon({
+        html: `<div style="
+          background:${color};border:3px solid white;border-radius:50%;
+          width:36px;height:36px;display:flex;align-items:center;
+          justify-content:center;font-size:16px;
+          box-shadow:0 2px 8px rgba(0,0,0,0.25);
+        ">${emoji}</div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+        className: "",
+      });
+
+      const bounds = [];
+
+      // Pickup marker
+      if (geocoded.pickup) {
+        const m = L.marker([geocoded.pickup.lat, geocoded.pickup.lng], {
+          icon: makeIcon("📦", "#2563eb"),
+        }).addTo(map).bindPopup(`<b>Pickup</b><br>${pickupAddress}`);
+        bounds.push([geocoded.pickup.lat, geocoded.pickup.lng]);
+      }
+
+      // Dropoff marker
+      if (geocoded.dropoff) {
+        const m = L.marker([geocoded.dropoff.lat, geocoded.dropoff.lng], {
+          icon: makeIcon("🏠", "#dc2626"),
+        }).addTo(map).bindPopup(`<b>Delivery</b><br>${dropoffAddress}`);
+        bounds.push([geocoded.dropoff.lat, geocoded.dropoff.lng]);
+      }
 
       // Driver marker
       if (driverLat && driverLng) {
-        const driverIcon = L.divIcon({
-          html: `<div style="
-            background: #16a34a;
-            border: 3px solid white;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          ">🚗</div>`,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
-          className: "",
-        });
-
-        driverMarkerRef.current = L.marker([driverLat, driverLng], { icon: driverIcon })
-          .addTo(map)
-          .bindPopup(`<b>${driverName || "Driver"}</b><br>On the way`)
-          .openPopup();
+        driverMarkerRef.current = L.marker([driverLat, driverLng], {
+          icon: makeIcon("🚗", "#16a34a"),
+        }).addTo(map).bindPopup(`<b>${driverName || "Driver"}</b><br>On the way`).openPopup();
+        bounds.push([driverLat, driverLng]);
       }
 
-      // Pickup marker
-      const pickupIcon = L.divIcon({
-        html: `<div style="
-          background: #2563eb;
-          border: 3px solid white;
-          border-radius: 50%;
-          width: 28px;
-          height: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 14px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        ">📦</div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        className: "",
-      });
-
-      // Dropoff marker
-      const dropoffIcon = L.divIcon({
-        html: `<div style="
-          background: #dc2626;
-          border: 3px solid white;
-          border-radius: 50%;
-          width: 28px;
-          height: 28px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 14px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        ">🏠</div>`,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        className: "",
-      });
-
-      // Add placeholder markers near driver location
-      if (driverLat && driverLng) {
-        L.marker([driverLat + 0.005, driverLng - 0.005], { icon: pickupIcon })
-          .addTo(map)
-          .bindPopup(`<b>Pickup</b><br>${pickupAddress}`);
-
-        L.marker([driverLat - 0.008, driverLng + 0.008], { icon: dropoffIcon })
-          .addTo(map)
-          .bindPopup(`<b>Delivery</b><br>${dropoffAddress}`);
+      // Fit map to show all markers
+      if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [40, 40] });
+      } else if (bounds.length === 1) {
+        map.setView(bounds[0], 14);
       }
     };
 
-    initMap();
-  }, []);
+    addMarkers();
+  }, [mapReady, geocoded, driverLat, driverLng]);
 
-  // Update driver marker when location changes
+  // Update driver marker position
   useEffect(() => {
     if (!mapInstanceRef.current || !driverMarkerRef.current) return;
     if (!driverLat || !driverLng) return;
-
     driverMarkerRef.current.setLatLng([driverLat, driverLng]);
-    mapInstanceRef.current.panTo([driverLat, driverLng]);
   }, [driverLat, driverLng]);
 
+  const hasAnything = driverLat || geocoded.pickup || geocoded.dropoff;
+
   return (
-    <div className="relative">
-      <div ref={mapRef} className="w-full h-56 md:h-72 rounded-2xl overflow-hidden z-0" />
-      {!driverLat && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-2xl">
-          <div className="text-center">
-            <p className="text-2xl mb-1">🗺️</p>
-            <p className="text-sm text-gray-500 font-medium">Map available when driver is assigned</p>
+    <div className="relative rounded-2xl overflow-hidden">
+      <div ref={mapRef} className="w-full h-56 md:h-64 z-0" />
+      {!hasAnything && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+          <div className="text-center p-4">
+            <p className="text-2xl mb-2">🗺️</p>
+            <p className="text-sm text-gray-500">Loading map...</p>
           </div>
         </div>
       )}

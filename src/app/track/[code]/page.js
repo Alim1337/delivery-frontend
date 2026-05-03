@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import api from "@/lib/axios";
+import dynamic from "next/dynamic";
 import {
   Truck, MapPin, Package, CheckCircle,
-  Clock, XCircle, Search, Building2, User, Phone
+  Clock, XCircle, Search, Building2, User,
+  Phone, ArrowLeft
 } from "lucide-react";
 
 const DeliveryMap = dynamic(() => import("@/components/DeliveryMap"), { ssr: false });
@@ -19,12 +20,12 @@ const statusSteps = [
 ];
 
 const statusColors = {
-  PENDING:    "text-yellow-500",
-  ACCEPTED:   "text-blue-500",
-  PICKED_UP:  "text-indigo-500",
-  ON_THE_WAY: "text-purple-500",
-  DELIVERED:  "text-green-500",
-  CANCELLED:  "text-red-500",
+  PENDING:    "bg-yellow-100 text-yellow-700",
+  ACCEPTED:   "bg-blue-100 text-blue-700",
+  PICKED_UP:  "bg-indigo-100 text-indigo-700",
+  ON_THE_WAY: "bg-purple-100 text-purple-700",
+  DELIVERED:  "bg-green-100 text-green-700",
+  CANCELLED:  "bg-red-100 text-red-700",
 };
 
 export default function TrackPage() {
@@ -35,6 +36,15 @@ export default function TrackPage() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [driverLocation, setDriverLocation] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    setIsLoggedIn(!!token);
+    setUserRole(role);
+  }, []);
 
   useEffect(() => {
     if (params?.code && params.code !== "DLV-00000000") {
@@ -88,6 +98,19 @@ export default function TrackPage() {
     }
   };
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      router.back();
+    } else if (isLoggedIn) {
+      if (userRole === "BUSINESS") router.push("/business/dashboard");
+      else if (userRole === "DRIVER") router.push("/drivers/dashboard");
+      else if (userRole === "CUSTOMER") router.push("/customers/dashboard");
+      else router.push("/dashboard");
+    } else {
+      router.push("/landing");
+    }
+  };
+
   const currentStep = delivery
     ? statusSteps.findIndex(s => s.key === delivery.status)
     : -1;
@@ -97,16 +120,33 @@ export default function TrackPage() {
       {/* Header */}
       <div className="bg-white/10 backdrop-blur border-b border-white/20">
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-          <a href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <Truck className="w-4 h-4 text-blue-600" />
-            </div>
-            <span className="font-bold text-white">DeliverFlow</span>
-          </a>
-          <a href="/login"
-            className="text-sm text-white/80 hover:text-white border border-white/30 px-4 py-1.5 rounded-lg transition">
-            Sign in
-          </a>
+          <div className="flex items-center gap-3">
+            <button onClick={handleBack}
+              className="flex items-center gap-1.5 text-white/80 hover:text-white transition text-sm">
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:block">Back</span>
+            </button>
+            <div className="w-px h-5 bg-white/20" />
+            <a href="/" className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center">
+                <Truck className="w-3.5 h-3.5 text-blue-600" />
+              </div>
+              <span className="font-bold text-white text-sm hidden sm:block">DeliverFlow</span>
+            </a>
+          </div>
+
+          {/* Right side — show Dashboard if logged in, Sign in if not */}
+          {isLoggedIn ? (
+            <button onClick={handleBack}
+              className="text-sm text-white/80 hover:text-white border border-white/30 px-4 py-1.5 rounded-lg transition">
+              Dashboard
+            </button>
+          ) : (
+            <a href="/login"
+              className="text-sm text-white/80 hover:text-white border border-white/30 px-4 py-1.5 rounded-lg transition">
+              Sign in
+            </a>
+          )}
         </div>
       </div>
 
@@ -156,17 +196,11 @@ export default function TrackPage() {
                     {delivery.trackingCode}
                   </p>
                 </div>
-                <span className={`text-sm font-bold px-3 py-1 rounded-full ${
-                  delivery.status === "DELIVERED" ? "bg-green-100 text-green-700" :
-                  delivery.status === "CANCELLED" ? "bg-red-100 text-red-700" :
-                  delivery.status === "ON_THE_WAY" ? "bg-purple-100 text-purple-700" :
-                  "bg-blue-100 text-blue-700"
-                }`}>
+                <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${statusColors[delivery.status] || "bg-gray-100 text-gray-600"}`}>
                   {delivery.status?.replace(/_/g, " ")}
                 </span>
               </div>
 
-              {/* Progress */}
               {delivery.status !== "CANCELLED" ? (
                 <div className="relative mb-5">
                   <div className="flex justify-between relative z-10">
@@ -177,9 +211,7 @@ export default function TrackPage() {
                       return (
                         <div key={step.key} className="flex flex-col items-center gap-1.5 flex-1">
                           <div className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all ${
-                            done
-                              ? "bg-blue-600 border-blue-600 text-white"
-                              : "bg-white border-gray-200 text-gray-300"
+                            done ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-200 text-gray-300"
                           } ${active ? "ring-4 ring-blue-100 scale-110" : ""}`}>
                             <Icon className="w-4 h-4" />
                           </div>
@@ -193,14 +225,8 @@ export default function TrackPage() {
                     })}
                   </div>
                   <div className="absolute top-[18px] left-5 right-5 h-0.5 bg-gray-100 -z-0">
-                    <div
-                      className="h-full bg-blue-600 transition-all duration-500"
-                      style={{
-                        width: currentStep >= 0
-                          ? `${(currentStep / (statusSteps.length - 1)) * 100}%`
-                          : "0%"
-                      }}
-                    />
+                    <div className="h-full bg-blue-600 transition-all duration-500"
+                      style={{ width: currentStep >= 0 ? `${(currentStep / (statusSteps.length - 1)) * 100}%` : "0%" }} />
                   </div>
                 </div>
               ) : (
@@ -236,7 +262,7 @@ export default function TrackPage() {
               </div>
             </div>
 
-            {/* Map — show when driver is active */}
+            {/* Map card */}
             {["ACCEPTED", "PICKED_UP", "ON_THE_WAY"].includes(delivery.status) && (
               <div className="bg-white rounded-2xl p-5 shadow-xl">
                 <div className="flex items-center justify-between mb-3">
@@ -255,23 +281,18 @@ export default function TrackPage() {
                   dropoffAddress={delivery.dropoffAddress}
                   driverLat={driverLocation?.lat}
                   driverLng={driverLocation?.lng}
-                  driverName={driverLocation?.name}
+                  driverName={driverLocation?.name || delivery.driverName}
                   status={delivery.status}
                 />
-                <p className="text-xs text-gray-400 mt-2 text-center">
-                  Updates every 15 seconds
-                </p>
+                <p className="text-xs text-gray-400 mt-2 text-center">Updates every 15 seconds</p>
               </div>
             )}
 
-            {/* People involved card */}
+            {/* People involved */}
             <div className="bg-white rounded-2xl p-5 shadow-xl">
-              <p className="text-xs text-gray-400 uppercase font-semibold tracking-wide mb-4">
-                People Involved
-              </p>
+              <p className="text-xs text-gray-400 uppercase font-semibold tracking-wide mb-4">People Involved</p>
               <div className="space-y-4">
-
-                {/* Business / Sender */}
+                {/* Business */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
                     <Building2 className="w-5 h-5 text-purple-600" />
@@ -280,14 +301,12 @@ export default function TrackPage() {
                     <p className="text-xs text-gray-400">Sent by</p>
                     <p className="font-semibold text-gray-800 text-sm">{delivery.businessName}</p>
                   </div>
-                  <span className="text-xs bg-purple-50 text-purple-600 px-2 py-1 rounded-lg font-medium flex-shrink-0">
-                    Business
-                  </span>
+                  <span className="text-xs bg-purple-50 text-purple-600 px-2 py-1 rounded-lg font-medium flex-shrink-0">Business</span>
                 </div>
 
                 <div className="border-t border-gray-50" />
 
-                {/* Customer / Receiver */}
+                {/* Customer */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
                     <User className="w-5 h-5 text-blue-600" />
@@ -302,13 +321,11 @@ export default function TrackPage() {
                       </div>
                     )}
                   </div>
-                  <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-lg font-medium flex-shrink-0">
-                    Customer
-                  </span>
+                  <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-lg font-medium flex-shrink-0">Customer</span>
                 </div>
 
-                {/* Driver — only show if assigned */}
-                {delivery.driverName && (
+                {/* Driver */}
+                {delivery.driverName ? (
                   <>
                     <div className="border-t border-gray-50" />
                     <div className="flex items-center gap-3">
@@ -334,10 +351,7 @@ export default function TrackPage() {
                       </span>
                     </div>
                   </>
-                )}
-
-                {/* Waiting for driver */}
-                {!delivery.driverName && delivery.status === "PENDING" && (
+                ) : delivery.status === "PENDING" ? (
                   <>
                     <div className="border-t border-gray-50" />
                     <div className="flex items-center gap-3">
@@ -350,36 +364,30 @@ export default function TrackPage() {
                       </div>
                     </div>
                   </>
-                )}
+                ) : null}
               </div>
             </div>
 
             {/* Timeline */}
             <div className="bg-white rounded-2xl p-5 shadow-xl">
-              <p className="text-xs text-gray-400 uppercase font-semibold tracking-wide mb-4">
-                Timeline
-              </p>
+              <p className="text-xs text-gray-400 uppercase font-semibold tracking-wide mb-4">Timeline</p>
               <div className="space-y-3">
                 {[
-                  { label: "Order placed",      time: delivery.createdAt,   icon: "📦" },
-                  { label: "Driver accepted",   time: delivery.acceptedAt,  icon: "🚗" },
-                  { label: "Package picked up", time: delivery.pickedUpAt,  icon: "📤" },
-                  { label: "Delivered",         time: delivery.deliveredAt, icon: "✅" },
+                  { label: "Order placed",      time: delivery.createdAt,   emoji: "📦" },
+                  { label: "Driver accepted",   time: delivery.acceptedAt,  emoji: "🚗" },
+                  { label: "Package picked up", time: delivery.pickedUpAt,  emoji: "📤" },
+                  { label: "Delivered",         time: delivery.deliveredAt, emoji: "✅" },
                 ].filter(t => t.time).map((t, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="text-base flex-shrink-0">{t.icon}</span>
+                    <span className="text-base flex-shrink-0">{t.emoji}</span>
                     <span className="text-sm text-gray-600 flex-1">{t.label}</span>
-                    <span className="text-xs text-gray-400">
-                      {new Date(t.time).toLocaleString()}
-                    </span>
+                    <span className="text-xs text-gray-400">{new Date(t.time).toLocaleString()}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <p className="text-center text-blue-200 text-xs pb-4">
-              🔄 Auto-refreshes every 30 seconds
-            </p>
+            <p className="text-center text-blue-200 text-xs pb-4">🔄 Auto-refreshes every 30 seconds</p>
           </div>
         ) : (
           <div className="bg-white rounded-2xl p-12 text-center shadow-xl">
