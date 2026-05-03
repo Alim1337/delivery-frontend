@@ -44,13 +44,24 @@ export default function DeliveryMap({
   // Initialize map
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (mapInstanceRef.current) return;
+
+    let cancelled = false;
+    let timeoutId;
 
     const initMap = async () => {
       const L = (await import("leaflet")).default;
       await import("leaflet/dist/leaflet.css");
 
-      // Determine center: driver > pickup > dropoff > Algiers
+      // Bail if component unmounted or already initialized
+      if (cancelled) return;
+      if (mapInstanceRef.current) return;
+      if (!mapRef.current) return;
+
+      // If Leaflet already stamped this container, destroy it first
+      if (mapRef.current._leaflet_id) {
+        mapRef.current._leaflet_id = null;
+      }
+
       const center = driverLat && driverLng
         ? [driverLat, driverLng]
         : geocoded.pickup
@@ -72,11 +83,22 @@ export default function DeliveryMap({
       }).addTo(map);
 
       mapInstanceRef.current = map;
-      setMapReady(true);
+      if (!cancelled) setMapReady(true);
     };
 
-    // Small delay to ensure DOM is ready
-    setTimeout(initMap, 100);
+    timeoutId = setTimeout(initMap, 100);
+
+    // Cleanup: destroy map on unmount
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        driverMarkerRef.current = null;
+        setMapReady(false);
+      }
+    };
   }, []);
 
   // Add markers once map is ready + geocoding done
@@ -101,23 +123,20 @@ export default function DeliveryMap({
 
       const bounds = [];
 
-      // Pickup marker
       if (geocoded.pickup) {
-        const m = L.marker([geocoded.pickup.lat, geocoded.pickup.lng], {
+        L.marker([geocoded.pickup.lat, geocoded.pickup.lng], {
           icon: makeIcon("📦", "#2563eb"),
         }).addTo(map).bindPopup(`<b>Pickup</b><br>${pickupAddress}`);
         bounds.push([geocoded.pickup.lat, geocoded.pickup.lng]);
       }
 
-      // Dropoff marker
       if (geocoded.dropoff) {
-        const m = L.marker([geocoded.dropoff.lat, geocoded.dropoff.lng], {
+        L.marker([geocoded.dropoff.lat, geocoded.dropoff.lng], {
           icon: makeIcon("🏠", "#dc2626"),
         }).addTo(map).bindPopup(`<b>Delivery</b><br>${dropoffAddress}`);
         bounds.push([geocoded.dropoff.lat, geocoded.dropoff.lng]);
       }
 
-      // Driver marker
       if (driverLat && driverLng) {
         driverMarkerRef.current = L.marker([driverLat, driverLng], {
           icon: makeIcon("🚗", "#16a34a"),
@@ -125,7 +144,6 @@ export default function DeliveryMap({
         bounds.push([driverLat, driverLng]);
       }
 
-      // Fit map to show all markers
       if (bounds.length > 1) {
         map.fitBounds(bounds, { padding: [40, 40] });
       } else if (bounds.length === 1) {
