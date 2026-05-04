@@ -40,21 +40,6 @@ export default function AdminDashboard() {
   const [deliveryStatusFilter, setDeliveryStatusFilter] = useState("ALL");
   const intervalRef = useRef(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
-    if (!token) { router.push("/login"); return; }
-    if (role !== "ADMIN") {
-      if (role === "BUSINESS") router.push("/business/dashboard");
-      else if (role === "DRIVER") router.push("/drivers/dashboard");
-      else if (role === "CUSTOMER") router.push("/customers/dashboard");
-      return;
-    }
-    fetchAll();
-    intervalRef.current = setInterval(() => fetchAll(true), 60000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, []);
-
   const fetchAll = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
@@ -72,6 +57,21 @@ export default function AdminDashboard() {
       setRefreshing(false);
     }
   }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    if (!token) { router.push("/login"); return; }
+    if (role !== "ADMIN") {
+      if (role === "BUSINESS") router.push("/business/dashboard");
+      else if (role === "DRIVER") router.push("/drivers/dashboard");
+      else if (role === "CUSTOMER") router.push("/customers/dashboard");
+      return;
+    }
+    fetchAll();
+    intervalRef.current = setInterval(() => fetchAll(true), 60000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [fetchAll, router]);
 
   const handleDeleteUser = async (id, email) => {
     if (!confirm(`Delete user ${email}? This cannot be undone.`)) return;
@@ -98,152 +98,183 @@ export default function AdminDashboard() {
   // ── EXPORT FUNCTIONS ──────────────────────────────────────────────────────
 
   const exportUsersExcel = async () => {
-    const XLSX = (await import("xlsx")).default;
-    const data = filteredUsers.map(u => ({
-      "ID": u.id,
-      "First Name": u.firstName,
-      "Last Name": u.lastName,
-      "Email": u.email,
-      "Phone": u.phone || "",
-      "Role": u.role,
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Users");
-    // Auto column widths
-    ws["!cols"] = [
-      { wch: 8 }, { wch: 15 }, { wch: 15 },
-      { wch: 30 }, { wch: 15 }, { wch: 12 }
-    ];
-    XLSX.writeFile(wb, `deliverflow-users-${new Date().toISOString().split("T")[0]}.xlsx`);
-    toast.success("Users exported to Excel!");
+    if (filteredUsers.length === 0) {
+      toast.error("No users to export");
+      return;
+    }
+    try {
+     const XLSX = await import("xlsx");
+
+      const data = filteredUsers.map(u => ({
+        "ID": u.id,
+        "First Name": u.firstName,
+        "Last Name": u.lastName,
+        "Email": u.email,
+        "Phone": u.phone || "",
+        "Role": u.role,
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Users");
+      ws["!cols"] = [
+        { wch: 8 }, { wch: 15 }, { wch: 15 },
+        { wch: 30 }, { wch: 15 }, { wch: 12 }
+      ];
+      XLSX.writeFile(wb, `deliverflow-users-${new Date().toISOString().split("T")[0]}.xlsx`);
+      toast.success("Users exported to Excel!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to export users");
+    }
   };
 
   const exportDeliveriesExcel = async () => {
-    const XLSX = (await import("xlsx")).default;
-    const data = filteredDeliveries.map(d => ({
-      "ID": d.id,
-      "Tracking Code": d.trackingCode,
-      "Business": d.businessName,
-      "Customer": d.customerName,
-      "Driver": d.driverName || "Unassigned",
-      "Item": d.itemDescription,
-      "Pickup": d.pickupAddress,
-      "Dropoff": d.dropoffAddress,
-      "Price (DA)": d.price,
-      "Status": d.status,
-      "Rating": d.rating || "",
-      "Created": new Date(d.createdAt).toLocaleDateString(),
-      "Delivered": d.deliveredAt ? new Date(d.deliveredAt).toLocaleDateString() : "",
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Deliveries");
-    ws["!cols"] = [
-      { wch: 6 }, { wch: 16 }, { wch: 20 }, { wch: 20 },
-      { wch: 20 }, { wch: 25 }, { wch: 30 }, { wch: 30 },
-      { wch: 12 }, { wch: 15 }, { wch: 8 }, { wch: 14 }, { wch: 14 }
-    ];
-    XLSX.writeFile(wb, `deliverflow-deliveries-${new Date().toISOString().split("T")[0]}.xlsx`);
-    toast.success("Deliveries exported to Excel!");
+    if (filteredDeliveries.length === 0) {
+      toast.error("No deliveries to export");
+      return;
+    }
+    try {
+      const XLSX = await import("xlsx");
+
+      const data = filteredDeliveries.map(d => ({
+        "ID": d.id,
+        "Tracking Code": d.trackingCode,
+        "Business": d.businessName,
+        "Customer": d.customerName,
+        "Driver": d.driverName || "Unassigned",
+        "Item": d.itemDescription,
+        "Pickup": d.pickupAddress,
+        "Dropoff": d.dropoffAddress,
+        "Price (DA)": d.price,
+        "Status": d.status,
+        "Rating": d.rating || "",
+        "Created": new Date(d.createdAt).toLocaleDateString(),
+        "Delivered": d.deliveredAt ? new Date(d.deliveredAt).toLocaleDateString() : "",
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Deliveries");
+      ws["!cols"] = [
+        { wch: 6 }, { wch: 16 }, { wch: 20 }, { wch: 20 },
+        { wch: 20 }, { wch: 25 }, { wch: 30 }, { wch: 30 },
+        { wch: 12 }, { wch: 15 }, { wch: 8 }, { wch: 14 }, { wch: 14 }
+      ];
+      XLSX.writeFile(wb, `deliverflow-deliveries-${new Date().toISOString().split("T")[0]}.xlsx`);
+      toast.success("Deliveries exported to Excel!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to export deliveries");
+    }
   };
 
   const exportStatsPDF = async () => {
-    const { default: jsPDF } = await import("jspdf");
-    const { default: autoTable } = await import("jspdf-autotable");
+    try {
+      // ✅ Fix: import jsPDF correctly and apply autoTable as a plugin
+      const jsPDFModule = await import("jspdf");
+      const jsPDF = jsPDFModule.default || jsPDFModule.jsPDF;
+      const autoTableModule = await import("jspdf-autotable");
+      const autoTable = autoTableModule.default;
 
-    const doc = new jsPDF();
-    const now = new Date().toLocaleDateString();
+      const doc = new jsPDF();
+      const now = new Date().toLocaleDateString();
 
-    // Title
-    doc.setFontSize(22);
-    doc.setTextColor(37, 99, 235);
-    doc.text("DeliverFlow", 14, 20);
+      // Title
+      doc.setFontSize(22);
+      doc.setTextColor(37, 99, 235);
+      doc.text("DeliverFlow", 14, 20);
 
-    doc.setFontSize(14);
-    doc.setTextColor(50, 50, 50);
-    doc.text("Admin Report", 14, 30);
+      doc.setFontSize(14);
+      doc.setTextColor(50, 50, 50);
+      doc.text("Admin Report", 14, 30);
 
-    doc.setFontSize(10);
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Generated on ${now}`, 14, 38);
+      doc.setFontSize(10);
+      doc.setTextColor(120, 120, 120);
+      doc.text(`Generated on ${now}`, 14, 38);
 
-    // Divider
-    doc.setDrawColor(229, 231, 235);
-    doc.line(14, 42, 196, 42);
+      // Divider
+      doc.setDrawColor(229, 231, 235);
+      doc.line(14, 42, 196, 42);
 
-    // Summary stats
-    doc.setFontSize(13);
-    doc.setTextColor(30, 30, 30);
-    doc.text("Summary", 14, 52);
-
-    autoTable(doc, {
-      startY: 56,
-      head: [["Metric", "Value"]],
-      body: [
-        ["Total Users", stats.total],
-        ["Customers", stats.customers],
-        ["Drivers", stats.drivers],
-        ["Businesses", stats.businesses],
-        ["Total Deliveries", stats.totalDeliveries],
-        ["Active Deliveries", stats.activeDeliveries],
-        ["Completed Deliveries", stats.completedDeliveries],
-        ["Cancelled Deliveries", stats.cancelledDeliveries],
-        ["Total Revenue (DA)", `${stats.revenue.toLocaleString()} DA`],
-        ["Average Delivery Price (DA)", `${stats.avgPrice} DA`],
-        ["Completion Rate", `${stats.completionRate}%`],
-      ],
-      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-      styles: { fontSize: 10 },
-      columnStyles: { 0: { fontStyle: "bold" } },
-    });
-
-    // Top drivers
-    const topDrivers = getTopDrivers();
-    if (topDrivers.length > 0) {
-      doc.addPage();
+      // Summary stats
       doc.setFontSize(13);
       doc.setTextColor(30, 30, 30);
-      doc.text("Top Drivers", 14, 20);
+      doc.text("Summary", 14, 52);
 
       autoTable(doc, {
-        startY: 24,
-        head: [["Driver", "Deliveries", "Revenue (DA)", "Avg Rating"]],
-        body: topDrivers.map(d => [
-          d.name, d.count, `${d.revenue} DA`, d.rating
-        ]),
-        headStyles: { fillColor: [22, 163, 74], textColor: 255, fontStyle: "bold" },
+        startY: 56,
+        head: [["Metric", "Value"]],
+        body: [
+          ["Total Users", stats.total],
+          ["Customers", stats.customers],
+          ["Drivers", stats.drivers],
+          ["Businesses", stats.businesses],
+          ["Total Deliveries", stats.totalDeliveries],
+          ["Active Deliveries", stats.activeDeliveries],
+          ["Completed Deliveries", stats.completedDeliveries],
+          ["Cancelled Deliveries", stats.cancelledDeliveries],
+          ["Total Revenue (DA)", `${stats.revenue.toLocaleString()} DA`],
+          ["Average Delivery Price (DA)", `${stats.avgPrice} DA`],
+          ["Completion Rate", `${stats.completionRate}%`],
+        ],
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         styles: { fontSize: 10 },
+        columnStyles: { 0: { fontStyle: "bold" } },
       });
+
+      // Top drivers
+      const topDriversData = getTopDrivers();
+      if (topDriversData.length > 0) {
+        doc.addPage();
+        doc.setFontSize(13);
+        doc.setTextColor(30, 30, 30);
+        doc.text("Top Drivers", 14, 20);
+
+        autoTable(doc, {
+          startY: 24,
+          head: [["Driver", "Deliveries", "Revenue (DA)", "Avg Rating"]],
+          body: topDriversData.map(d => [
+            d.name, d.count, `${d.revenue} DA`, d.rating
+          ]),
+          headStyles: { fillColor: [22, 163, 74], textColor: 255, fontStyle: "bold" },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          styles: { fontSize: 10 },
+        });
+      }
+
+      // Recent deliveries — appended on the same page as top drivers if space, or new page
+      const afterDriversY = (doc.lastAutoTable?.finalY || 24) + 16;
+      // Add a new page if too close to bottom
+      if (afterDriversY > 240) doc.addPage();
+
+      const recentY = afterDriversY > 240 ? 20 : afterDriversY;
+      doc.setFontSize(13);
+      doc.setTextColor(30, 30, 30);
+      doc.text("Recent Deliveries", 14, recentY);
+
+      autoTable(doc, {
+        startY: recentY + 4,
+        head: [["#", "Tracking", "Business", "Customer", "Price", "Status", "Date"]],
+        body: deliveries.slice(0, 20).map(d => [
+          d.id,
+          d.trackingCode,
+          d.businessName,
+          d.customerName,
+          `${d.price} DA`,
+          d.status.replace(/_/g, " "),
+          new Date(d.createdAt).toLocaleDateString(),
+        ]),
+        headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        styles: { fontSize: 9 },
+      });
+
+      doc.save(`deliverflow-report-${new Date().toISOString().split("T")[0]}.pdf`);
+      toast.success("PDF report downloaded!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate PDF report");
     }
-
-    // Recent deliveries
-    doc.setFontSize(13);
-    doc.setTextColor(30, 30, 30);
-    const afterDriversY = doc.lastAutoTable?.finalY || 24;
-    doc.text("Recent Deliveries", 14, afterDriversY + 16);
-
-    autoTable(doc, {
-      startY: afterDriversY + 20,
-      head: [["#", "Tracking", "Business", "Customer", "Price", "Status", "Date"]],
-      body: deliveries.slice(0, 20).map(d => [
-        d.id,
-        d.trackingCode,
-        d.businessName,
-        d.customerName,
-        `${d.price} DA`,
-        d.status.replace(/_/g, " "),
-        new Date(d.createdAt).toLocaleDateString(),
-      ]),
-      headStyles: { fillColor: [124, 58, 237], textColor: 255, fontStyle: "bold" },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-      styles: { fontSize: 9 },
-    });
-
-    doc.save(`deliverflow-report-${new Date().toISOString().split("T")[0]}.pdf`);
-    toast.success("PDF report downloaded!");
   };
 
   // ── COMPUTED STATS ─────────────────────────────────────────────────────────
@@ -644,7 +675,7 @@ export default function AdminDashboard() {
                     ) : filteredUsers.map(u => (
                       <div key={u.id} className="flex items-center gap-3 p-4 hover:bg-gray-50 transition">
                         <div className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 font-semibold text-gray-600 text-sm">
-                          {((u.firstName?.[0] || "") + (u.lastName?.[0] || "") || u.email?.[0] || "?").toUpperCase().slice(0,2)}
+                          {((u.firstName?.[0] || "") + (u.lastName?.[0] || "") || u.email?.[0] || "?").toUpperCase().slice(0, 2)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
