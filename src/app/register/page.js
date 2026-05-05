@@ -58,6 +58,7 @@ export default function RegisterPage() {
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
       localStorage.setItem("firstName", firstName);
+      localStorage.setItem("email", res.data.email); // ← add this
       toast.success(`Welcome, ${firstName}!`);
       if (role === "BUSINESS") router.push("/business/setup");
       else if (role === "DRIVER") router.push("/drivers/setup");

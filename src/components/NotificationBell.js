@@ -2,24 +2,43 @@
 import { useEffect, useState, useRef } from "react";
 import api from "@/lib/axios";
 import { Bell, X, Check } from "lucide-react";
+import { connectWebSocket, disconnectWebSocket, subscribeToUserNotifications } from "@/lib/websocket";
+import toast from "react-hot-toast";
 
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const stompRef = useRef(null);
 
   useEffect(() => {
     fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
-    return () => clearInterval(interval);
+
+    // Connect WebSocket for instant notifications
+    const email = localStorage.getItem("email");
+    if (email) {
+      stompRef.current = connectWebSocket((client) => {
+        subscribeToUserNotifications(client, email, (notification) => {
+          toast(notification.message, {
+            icon: notification.type === "DELIVERED" ? "🎉" :
+                  notification.type === "CANCELLED" ? "❌" : "📦",
+          });
+          setUnread(prev => prev + 1);
+        });
+      });
+    }
+
+    const interval = setInterval(fetchUnread, 60000);
+    return () => {
+      clearInterval(interval);
+      disconnectWebSocket();
+    };
   }, []);
 
   useEffect(() => {
     const handleClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
-        setOpen(false);
-      }
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -43,7 +62,6 @@ export default function NotificationBell() {
     setOpen(!open);
     if (!open) {
       fetchAll();
-      // mark as read after opening
       setTimeout(async () => {
         try {
           await api.post("/api/notifications/mark-read");
@@ -69,7 +87,7 @@ export default function NotificationBell() {
         className="relative p-2 rounded-xl text-gray-500 hover:bg-gray-100 transition">
         <Bell className="w-5 h-5" />
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-pulse">
             {unread > 9 ? "9+" : unread}
           </span>
         )}

@@ -22,6 +22,8 @@ export default function LoginPage() {
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
       localStorage.setItem("firstName", firstName);
+      localStorage.setItem("email", res.data.email); // ← add this
+
       toast.success(`Welcome back, ${firstName}!`);
       if (role === "BUSINESS") router.push("/business/dashboard");
       else if (role === "DRIVER") router.push("/drivers/dashboard");

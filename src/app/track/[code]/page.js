@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import api from "@/lib/axios";
 import dynamic from "next/dynamic";
+import { connectWebSocket, disconnectWebSocket, subscribeToDelivery } from "@/lib/websocket";
 import {
   Truck, MapPin, Package, CheckCircle,
   Clock, XCircle, Search, Building2, User,
@@ -57,26 +58,31 @@ export default function TrackPage() {
   }, [params?.code]);
 
   useEffect(() => {
-    if (!delivery?.trackingCode) return;
-    if (!["ACCEPTED", "PICKED_UP", "ON_THE_WAY"].includes(delivery?.status)) return;
+  if (!delivery?.id) return;
 
-    const fetchLocation = async () => {
-      try {
-        const res = await api.get(`/api/deliveries/track/${delivery.trackingCode}/location`);
-        if (res.data.available) {
-          setDriverLocation({
-            lat: res.data.latitude,
-            lng: res.data.longitude,
-            name: res.data.driverName,
-          });
-        }
-      } catch {}
-    };
+  const client = connectWebSocket((stompClient) => {
 
-    fetchLocation();
-    const interval = setInterval(fetchLocation, 15000);
-    return () => clearInterval(interval);
-  }, [delivery?.trackingCode, delivery?.status]);
+    subscribeToDelivery(stompClient, delivery.id, (update) => {
+      
+      // ✅ Update status in real-time
+      setDelivery(prev =>
+        prev ? { ...prev, status: update.status } : prev
+      );
+
+      // ✅ Update driver location in real-time
+      if (update.driverLat && update.driverLng) {
+        setDriverLocation({
+          lat: update.driverLat,
+          lng: update.driverLng,
+          name: delivery.driverName,
+        });
+      }
+    });
+
+  });
+
+  return () => disconnectWebSocket();
+}, [delivery?.id]);
 
   const fetchDelivery = async (code) => {
     try {

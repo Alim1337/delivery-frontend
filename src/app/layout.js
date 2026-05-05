@@ -9,20 +9,6 @@ export const metadata = {
   title: "DeliverFlow",
   description: "Smart delivery management",
   manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "DeliverFlow",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-  openGraph: {
-    type: "website",
-    siteName: "DeliverFlow",
-    title: "DeliverFlow",
-    description: "Smart delivery management",
-  },
 };
 
 export const viewport = {
@@ -42,8 +28,22 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="DeliverFlow" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                if (localStorage.getItem('darkMode') === 'true') {
+                  document.documentElement.classList.add('dark');
+                }
+                var lang = localStorage.getItem('lang') || 'en';
+                document.documentElement.lang = lang;
+                document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+              } catch(e) {}
+            `,
+          }}
+        />
       </head>
-      <body className={`${geist.className} bg-gray-50 min-h-screen`}>
+      <body className={`${geist.className} bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors`}>
         <Toaster
           position="top-right"
           toastOptions={{
