@@ -1,6 +1,5 @@
 import { Geist } from "next/font/google";
 import { Toaster } from "react-hot-toast";
-import InstallPrompt from "@/components/InstallPrompt";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"] });
@@ -20,12 +19,11 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="DeliverFlow" />
         <meta name="mobile-web-app-capable" content="yes" />
         <script
@@ -43,7 +41,9 @@ export default function RootLayout({ children }) {
           }}
         />
       </head>
-      <body className={`${geist.className} bg-gray-50 dark:bg-gray-900 min-h-screen transition-colors`}>
+      <body
+        className={`${geist.className} bg-gray-50 dark:bg-gray-900 min-h-screen`}
+        suppressHydrationWarning>
         <Toaster
           position="top-right"
           toastOptions={{
@@ -51,7 +51,6 @@ export default function RootLayout({ children }) {
             style: { borderRadius: "10px", fontFamily: "inherit" },
           }}
         />
-        <InstallPrompt />
         {children}
       </body>
     </html>
