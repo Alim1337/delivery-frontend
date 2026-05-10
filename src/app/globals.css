@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Tell Tailwind v4 to use the .dark class strategy */
+@variant dark (&:where(.dark, .dark *));
+
 @layer base {
   * { box-sizing: border-box; }
   body { font-family: 'Inter', sans-serif; }

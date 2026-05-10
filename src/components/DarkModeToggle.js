@@ -1,28 +1,29 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 
 export default function DarkModeToggle() {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("darkMode") === "true";
-    setDark(saved);
-    if (saved) document.documentElement.classList.add("dark");
-    else document.documentElement.classList.remove("dark");
+    // Sync with whatever the inline script in layout.js already applied to <html>
+    setDark(document.documentElement.classList.contains("dark"));
   }, []);
 
   const toggle = () => {
-    const next = !dark;
+    // Always read live DOM to avoid stale closure issues
+    const next = !document.documentElement.classList.contains("dark");
+    document.documentElement.classList.toggle("dark", next);
     setDark(next);
-    localStorage.setItem("darkMode", next);
-    if (next) document.documentElement.classList.add("dark");
-    else document.documentElement.classList.remove("dark");
+    try { localStorage.setItem("darkMode", String(next)); } catch (_) {}
   };
 
   return (
-    <button onClick={toggle}
-      className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300 transition">
+    <button
+      onClick={toggle}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+    >
       {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
     </button>
   );
