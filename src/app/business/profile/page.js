@@ -9,6 +9,7 @@ import { Building2, Save, User } from "lucide-react";
 const links = [
   { href: "/business/dashboard", label: "Dashboard" },
   { href: "/business/new-delivery", label: "New Delivery" },
+  { href: "/business/analytics", label: "Analytics" },
   { href: "/business/profile", label: "Profile" },
 ];
 
